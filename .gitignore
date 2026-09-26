@@ -3,5 +3,5 @@ __pycache__/
 .pytest_cache/
 *.pkl
 *.csv
-assets/executables/*.exe
-!assets/executables/README.md
+BACK/assets/executables/*.exe
+!BACK/assets/executables/README.md
