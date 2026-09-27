@@ -1,4 +1,4 @@
-# DigitalBrain
+# DigitalBrain-BCI_UI_Application
 
 DigitalBrain procesa capturas de cuatro canales, extrae características espectrales y entrena clasificadores con Python. El repositorio contiene un backend funcional por línea de comandos y una carpeta `FRONT` reservada para la futura aplicación de escritorio en C# y WPF. La integración WPF todavía no está implementada.
 
@@ -69,3 +69,5 @@ El archivo capturado queda en `datos_capturados/`, una carpeta ignorada por Git;
 - [Estado y diseño pendiente de la integración WPF](docs/integracion-wpf.md)
 
 Las capturas `.txt` de `BACK/datos/` son datos originales, no documentación. Los modelos `.pkl` son artefactos de Python y deben cargarse únicamente desde fuentes confiables.
+
+
