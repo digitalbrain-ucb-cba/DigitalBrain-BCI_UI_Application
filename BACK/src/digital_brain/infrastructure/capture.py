@@ -37,23 +37,6 @@ class ExecutableCapture:
     def __init__(self, executable_path: Path) -> None:
         self.executable_path = Path(executable_path).resolve()
 
-    def stream_lines(self) -> Iterator[str]:
-        if not self.executable_path.is_file():
-            raise FileNotFoundError(f"No se encontró el ejecutable: {self.executable_path}")
-        with subprocess.Popen(
-            [str(self.executable_path)],
-            cwd=str(self.executable_path.parent),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            bufsize=1,
-        ) as process:
-            if process.stdout is None:
-                raise RuntimeError("El ejecutable no proporcionó salida estándar.")
-            yield from process.stdout
-
     def capture_to_file(
         self,
         output_directory: Path = Path("datos_capturados"),
