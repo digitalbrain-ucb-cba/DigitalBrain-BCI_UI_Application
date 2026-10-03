@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Paleta de Fondo y Superficie (Dark Theme Científico) -->
+    <SolidColorBrush x:Key="BgPrimary" Color="#0F172A" />
+    <SolidColorBrush x:Key="BgSecondary" Color="#1E293B" />
+    <SolidColorBrush x:Key="BgCard" Color="#334155" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#475569" />
+
+    <!-- Texto -->
+    <SolidColorBrush x:Key="TextPrimary" Color="#F8FAFC" />
+    <SolidColorBrush x:Key="TextSecondary" Color="#94A3B8" />
+    <SolidColorBrush x:Key="TextMuted" Color="#64748B" />
+
+    <!-- Acentos e Indicadores de Canales EEG/EMG -->
+    <SolidColorBrush x:Key="AccentPrimary" Color="#3B82F6" />
+    <SolidColorBrush x:Key="AccentSuccess" Color="#10B981" />
+    <SolidColorBrush x:Key="AccentWarning" Color="#F59E0B" />
+    <SolidColorBrush x:Key="AccentDanger" Color="#EF4444" />
+
+    <!-- Trazas de Osciloscopio por Canal -->
+    <SolidColorBrush x:Key="Channel1Brush" Color="#38BDF8" /> <!-- Celeste Cyan -->
+    <SolidColorBrush x:Key="Channel2Brush" Color="#F472B6" /> <!-- Rosa Neón -->
+    <SolidColorBrush x:Key="Channel3Brush" Color="#34D399" /> <!-- Esmeralda -->
+    <SolidColorBrush x:Key="Channel4Brush" Color="#FBBF24" /> <!-- Ámbar -->
+
+</ResourceDictionary>

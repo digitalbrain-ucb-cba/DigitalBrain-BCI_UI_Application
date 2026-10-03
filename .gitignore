@@ -5,3 +5,10 @@ __pycache__/
 *.pkl
 *.csv
 BACK/datos_capturados/
+
+# .NET / C# / Visual Studio
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
