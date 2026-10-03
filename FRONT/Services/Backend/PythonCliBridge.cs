@@ -63,7 +63,7 @@ public class PythonCliBridge : IBackendBridge
         progress?.Report($"Iniciando entrenamiento ({classifierType})...");
 
         string datasetsArg = string.Join(" ", datasetPaths.Select(d => $"\"{d}\""));
-        string args = $"-m digital_brain.cli train \"{outputModelPath}\" {datasetsArg}";
+        string args = $"-m digital_brain.cli train \"{outputModelPath}\" {datasetsArg} --algorithm {classifierType}";
 
         var result = await RunProcessAsync(_pythonExecutable, args, _backendRootPath, progress);
 

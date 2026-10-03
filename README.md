@@ -64,9 +64,10 @@ El archivo capturado queda en `datos_capturados/`, una carpeta ignorada por Git;
 
 ## Documentación
 
+- [Documentación general y arquitectura de la solución](documentacion.md)
 - [Arquitectura y flujo del backend](docs/arquitectura.md)
 - [Datos, ventanas, características y modelos](docs/datos-y-modelos.md)
-- [Estado y diseño pendiente de la integración WPF](docs/integracion-wpf.md)
+- [Estado y diseño de la integración WPF](docs/integracion-wpf.md)
 
 Las capturas `.txt` de `BACK/datos/` son datos originales, no documentación. Los modelos `.pkl` son artefactos de Python y deben cargarse únicamente desde fuentes confiables.
 

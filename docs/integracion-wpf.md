@@ -2,9 +2,9 @@
 
 ## Estado actual
 
-`FRONT/` todavía no contiene un proyecto C# o WPF; su README señala el destino previsto. El backend tampoco expone HTTP, sockets, tuberías con mensajes estructurados ni un comando `predict`.
+`FRONT/` ya contiene la arquitectura base de escritorio en C# con WPF sobre .NET 10 (con patrón MVVM, inyección de dependencias, búfer circular y servicios desacoplados). Para detalles de la arquitectura implementada, ver [documentacion.md](../documentacion.md).
 
-WPF puede iniciar hoy la CLI de Python para operaciones por lote, pero sus mensajes de consola son texto para personas, no un contrato estable para una interfaz. Durante `capture`, la salida del dispositivo se mezcla con mensajes de estado. Los modelos `.pkl` se cargan desde Python; WPF no los consume directamente.
+Actualmente, WPF se integra con la CLI de Python (`PythonCliBridge`) para operaciones por lote (`build-dataset` y `train`), mientras que la captura y osciloscopio son administrados de forma desacoplada por `ConDumpCaptureService`. Durante `capture`, la salida del dispositivo se procesa de forma asíncrona por líneas. Los modelos `.pkl` se gestionan desde Python.
 
 | Operación | Disponible en Python | Interfaz preparada para WPF |
 | --- | --- | --- |
