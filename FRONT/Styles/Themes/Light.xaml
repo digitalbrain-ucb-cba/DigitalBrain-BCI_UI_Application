@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Tema claro (diseño «Captura y entrenamiento») -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F3EEE3" />
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FBF8F1" />
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#E7E0CF" />
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#F2ECDF" />
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#E4DCCB" />
+    <SolidColorBrush x:Key="InputFocusBrush" Color="#B4573B" />
+    <SolidColorBrush x:Key="TileBackgroundBrush" Color="#F2ECDF" />
+    <SolidColorBrush x:Key="TrackBrush" Color="#E8E2D4" />
+    <SolidColorBrush x:Key="DividerBrush" Color="#E5DED0" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1E2A38" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5B6573" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#8C939C" />
+    <SolidColorBrush x:Key="SectionLabelBrush" Color="#3F5A70" />
+
+    <SolidColorBrush x:Key="AccentBrush" Color="#B4573B" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#9E4A31" />
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ErrorBrush" Color="#B3261E" />
+
+    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#27313E" />
+    <SolidColorBrush x:Key="SidebarPanelBrush" Color="#323D4B" />
+    <SolidColorBrush x:Key="SidebarTextBrush" Color="#F2EEE6" />
+    <SolidColorBrush x:Key="SidebarMutedBrush" Color="#A9B1BC" />
+    <SolidColorBrush x:Key="SidebarActiveBrush" Color="#EFE5CF" />
+    <SolidColorBrush x:Key="SidebarActiveTextBrush" Color="#1E2A38" />
+    <SolidColorBrush x:Key="SidebarActiveMutedBrush" Color="#5B6573" />
+
+    <!-- Trazas por canal -->
+    <SolidColorBrush x:Key="Channel1Brush" Color="#4A6478" />
+    <SolidColorBrush x:Key="Channel2Brush" Color="#B5654A" />
+    <SolidColorBrush x:Key="Channel3Brush" Color="#1F2A3A" />
+    <SolidColorBrush x:Key="Channel4Brush" Color="#C49A3A" />
+    <SolidColorBrush x:Key="ValidSamplesBrush" Color="#3F5A70" />
+</ResourceDictionary>

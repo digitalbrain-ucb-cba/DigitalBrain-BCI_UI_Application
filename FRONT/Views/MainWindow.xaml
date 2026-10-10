@@ -6,11 +6,211 @@
         xmlns:viewmodels="clr-namespace:DigitalBrain.UI.ViewModels"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=viewmodels:MainViewModel}"
-        Title="{Binding Title}" Height="720" Width="1100"
-        WindowStartupLocation="CenterScreen">
+        Title="{Binding Title}" Height="960" Width="1600" MinHeight="720" MinWidth="1200" WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="{StaticResource UiFont}"
+        Background="{DynamicResource AppBackgroundBrush}">
+
+    <Window.Resources>
+        <Style x:Key="NavTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+        </Style>
+        <Style x:Key="NavSubtitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Foreground" Value="{DynamicResource SidebarMutedBrush}" />
+        </Style>
+        <Style x:Key="SidebarSection" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource SidebarMutedBrush}" />
+            <Setter Property="Margin" Value="14,26,0,10" />
+        </Style>
+        <Style x:Key="StatusDot" TargetType="Ellipse">
+            <Setter Property="Width" Value="9" />
+            <Setter Property="Height" Value="9" />
+            <Setter Property="Fill" Value="{StaticResource StatusIdleBrush}" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </Window.Resources>
 
     <Grid>
-        <!-- Contenedor dinámico para renderizar las vistas según el prototipo -->
-        <ContentControl Content="{Binding CurrentView}" />
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Barra lateral -->
+        <Border Background="{DynamicResource SidebarBackgroundBrush}">
+            <DockPanel Margin="16,28,16,20" LastChildFill="False">
+                <!-- Marca -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="10,0,0,0">
+                    <Border Width="46" Height="46" CornerRadius="10" Background="{DynamicResource AccentBrush}" VerticalAlignment="Top">
+                        <TextBlock Text="DB" Foreground="White" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Margin="16,0,0,0" Width="180">
+                        <TextBlock Text="DigitalBrain" FontFamily="{StaticResource DisplayFont}" FontSize="22" FontWeight="Bold"
+                                   Foreground="{DynamicResource SidebarTextBrush}" />
+                        <TextBlock Text="EEG Suite · del cerebro al robot" TextWrapping="Wrap" FontSize="14"
+                                   Foreground="{DynamicResource SidebarMutedBrush}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Navegación -->
+                <StackPanel DockPanel.Dock="Top" Margin="0,22,0,0">
+                    <TextBlock Text="PRINCIPAL" Style="{StaticResource SidebarSection}" />
+
+                    <Button Style="{StaticResource NavButtonStyle}" IsEnabled="False" ToolTip="Pantalla pendiente">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconHome}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource SidebarTextBrush}" Margin="0,0,20,0" />
+                            <StackPanel>
+                                <TextBlock Text="Inicio" Style="{StaticResource NavTitle}" />
+                                <TextBlock Text="Resumen del sistema" Style="{StaticResource NavSubtitle}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding NavigateCaptureTrainingCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCaptureTrainingActive}" Value="True">
+                                        <Setter Property="Tag" Value="Active" />
+                                        <Setter Property="Foreground" Value="{DynamicResource SidebarActiveTextBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconPulse}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource AccentBrush}" Margin="0,0,20,0" />
+                            <StackPanel>
+                                <TextBlock Text="Capturar y entrenar" Style="{StaticResource NavTitle}" FontWeight="SemiBold" />
+                                <TextBlock Text="Graba y enseña al modelo" FontSize="13.5"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Opacity="0.75" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource NavButtonStyle}" IsEnabled="False" ToolTip="Pantalla pendiente">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconPlay}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource SidebarTextBrush}" Margin="0,0,20,0" />
+                            <StackPanel>
+                                <TextBlock Text="Tiempo real" Style="{StaticResource NavTitle}" />
+                                <TextBlock Text="Controla el robot UGOT" Style="{StaticResource NavSubtitle}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Text="SISTEMA" Style="{StaticResource SidebarSection}" />
+
+                    <Button Style="{StaticResource NavButtonStyle}" IsEnabled="False" ToolTip="Pantalla pendiente">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconList}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource SidebarTextBrush}" Margin="0,0,20,0" />
+                            <StackPanel>
+                                <TextBlock Text="Base de datos" Style="{StaticResource NavTitle}" />
+                                <TextBlock Text="{Binding Status.RecordingCountText}" Style="{StaticResource NavSubtitle}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource NavButtonStyle}" IsEnabled="False" ToolTip="Pantalla pendiente">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconSliders}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource SidebarTextBrush}" Margin="0,0,20,0" />
+                            <StackPanel>
+                                <TextBlock Text="Configuración" Style="{StaticResource NavTitle}" />
+                                <TextBlock Text="Casco, modelo y robot" Style="{StaticResource NavSubtitle}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Estado -->
+                <Border DockPanel.Dock="Bottom" Background="{DynamicResource SidebarPanelBrush}" CornerRadius="12" Padding="18,16" Margin="0,16,0,0">
+                    <StackPanel>
+                        <TextBlock Text="ESTADO" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource SidebarMutedBrush}" Margin="0,0,0,10" />
+                        <DockPanel Margin="0,4">
+                            <Ellipse>
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse" BasedOn="{StaticResource StatusDot}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status.IsHeadsetStreaming}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Status.HeadsetDetail}" FontSize="14" Foreground="{DynamicResource SidebarMutedBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Casco EEG" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource SidebarTextBrush}" />
+                        </DockPanel>
+                        <DockPanel Margin="0,4">
+                            <Ellipse>
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse" BasedOn="{StaticResource StatusDot}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status.IsModelReady}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Status.ModelDetail}" FontFamily="{StaticResource MonoFont}" FontSize="13"
+                                       Foreground="{DynamicResource SidebarMutedBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Modelo" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource SidebarTextBrush}" />
+                        </DockPanel>
+                        <DockPanel Margin="0,4">
+                            <Ellipse Style="{StaticResource StatusDot}" />
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Status.RobotDetail}" FontSize="14" Foreground="{DynamicResource SidebarMutedBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Robot UGOT" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource SidebarTextBrush}" />
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Tema -->
+                <Border DockPanel.Dock="Bottom" Background="{DynamicResource SidebarPanelBrush}" CornerRadius="12" Padding="6">
+                    <UniformGrid Columns="2">
+                        <Button Command="{Binding UseLightThemeCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ThemeToggleStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDarkTheme}" Value="False">
+                                            <Setter Property="Tag" Value="Active" />
+                                            <Setter Property="Foreground" Value="{DynamicResource SidebarActiveTextBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource IconSun}" Style="{StaticResource IconStyle}" Width="18" Height="18"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Margin="0,0,10,0" />
+                                <TextBlock Text="Claro" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding UseDarkThemeCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ThemeToggleStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDarkTheme}" Value="True">
+                                            <Setter Property="Tag" Value="Active" />
+                                            <Setter Property="Foreground" Value="{DynamicResource SidebarActiveTextBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource IconMoon}" Style="{StaticResource IconStyle}" Width="18" Height="18"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Margin="0,0,10,0" />
+                                <TextBlock Text="Oscuro" />
+                            </StackPanel>
+                        </Button>
+                    </UniformGrid>
+                </Border>
+            </DockPanel>
+        </Border>
+
+        <!-- Vista activa -->
+        <ContentControl Grid.Column="1" Content="{Binding CurrentView}" Focusable="False" />
     </Grid>
 </Window>
