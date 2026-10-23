@@ -11,7 +11,8 @@ public static class AcquisitionParameters
     /// <summary>Avance entre ventanas: <c>window_size // 2</c> en el backend.</summary>
     public const int WindowStep = WindowSize / 2;
     public const double SaturationMicroVolts = 800.0;
-    public const double DefaultCaptureFromSeconds = 6.0;
+    /// <summary>Segundos iniciales de estabilización que el capturador corre sin guardar, aparte de la duración.</summary>
+    public const double DefaultCaptureFromSeconds = 5.0;
     public static readonly IReadOnlyList<string> ChannelNames = ["A", "B", "C", "D"];
 
     public static double OverlapRatio => 1.0 - (double)WindowStep / WindowSize;

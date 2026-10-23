@@ -8,7 +8,7 @@ public record SessionMetadata(
     string MovementLabel,
     int SessionNumber,
     double DurationSeconds = 30.0,
-    double CaptureFromSeconds = 6.0,
+    double CaptureFromSeconds = AcquisitionParameters.DefaultCaptureFromSeconds,
     string? Notes = null
 )
 {

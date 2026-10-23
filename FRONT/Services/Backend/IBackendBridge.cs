@@ -4,6 +4,9 @@ namespace DigitalBrain.UI.Services.Backend;
 
 public interface IBackendBridge
 {
+    /// <summary>Última línea de error de Python (p. ej. «ValueError: …») de la orden que falló.</summary>
+    string? LastError { get; }
+
     Task<bool> ValidatePythonEnvironmentAsync();
     
     Task<bool> BuildDatasetAsync(

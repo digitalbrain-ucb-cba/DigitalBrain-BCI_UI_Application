@@ -11,9 +11,12 @@ namespace DigitalBrain.UI.UseCases;
 public sealed class TrainModelUseCase(
     IBackendBridge backend,
     IDataCatalog catalog,
+    IRecordingRepository recordings,
     IBackendEnvironment environment)
 {
     public const string DefaultAlgorithm = "random_forest";
+    /// <summary>La división estratificada de <c>train</c> necesita al menos dos ventanas por clase.</summary>
+    public const int MinimumWindowsPerMovement = 2;
 
     public async Task<TrainModelResult> ExecuteAsync(
         IReadOnlyList<TrainingSelection> selections,
@@ -32,6 +35,20 @@ public sealed class TrainModelUseCase(
             sources.Add((selection, directories));
         }
 
+        // Una grabación corta o saturada genera un CSV vacío sin error, y luego train falla con un mensaje poco claro:
+        // se comprueba antes con las mismas reglas de ventaneo que build-dataset.
+        foreach (var (selection, directories) in sources)
+        {
+            var windows = 0;
+            foreach (var file in directories.SelectMany(d => Directory.EnumerateFiles(d, "*.txt")))
+                windows += (await recordings.AnalyzeAsync(file))?.Windows ?? 0;
+            if (windows < MinimumWindowsPerMovement)
+                return TrainModelResult.Failure(
+                    $"Las grabaciones de {selection.Description} solo dan {windows} ventanas: cada archivo necesita al menos " +
+                    $"{AcquisitionParameters.WindowSize} muestras válidas ({AcquisitionParameters.WindowSize / AcquisitionParameters.SampleRateHz:0.#} s sin saturar). " +
+                    "Graba más tiempo o elige otro sujeto.");
+        }
+
         var datasets = new List<string>();
         foreach (var (selection, directories) in sources)
         {
@@ -40,7 +57,7 @@ public sealed class TrainModelUseCase(
             {
                 var csvPath = Path.Combine(environment.DatasetsDirectory, DatasetFileName(selection.Movement, directory));
                 if (!await backend.BuildDatasetAsync(directory, csvPath, selection.Movement.Label, progress))
-                    return TrainModelResult.Failure($"No se pudo crear el dataset de {directory}.");
+                    return TrainModelResult.Failure($"No se pudo crear el dataset de {directory}: {backend.LastError ?? "error desconocido"}");
                 datasets.Add(csvPath);
             }
         }
@@ -48,7 +65,9 @@ public sealed class TrainModelUseCase(
         progress?.Report("Entrenando modelo…");
         var result = await backend.TrainModelAsync(environment.ModelPath, datasets, algorithm, progress);
         return result is null
-            ? TrainModelResult.Failure("El entrenamiento falló; revisa que el entorno de Python tenga el paquete digital_brain instalado.")
+            ? TrainModelResult.Failure(backend.LastError is { } error
+                ? $"El entrenamiento falló: {error}"
+                : "El entrenamiento falló; revisa que el entorno de Python tenga el paquete digital_brain instalado.")
             : TrainModelResult.Success(result, selections.Select(s => s.Movement).DistinctBy(m => m.Label).ToList());
     }
 

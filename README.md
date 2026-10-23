@@ -89,11 +89,11 @@ Cada movimiento es una carpeta de `BACK/datos/` y cada sujeto una subcarpeta suy
 
 | Zona | Comportamiento |
 | --- | --- |
-| Configuración de sesión | **Movimiento** y **Sujeto** son listas; el sujeto muestra solo los que tiene el movimiento elegido (si también existe en el nuevo movimiento, se mantiene al cambiarlo). El botón **+** de cada lista abre un campo para escribir uno nuevo (Intro añade, Esc cancela). Si el nombre ya existe en ese movimiento aparece un aviso y no se crea nada; tampoco se aceptan nombres que no sirvan como carpeta. Al añadir un movimiento se pide directamente su primer sujeto. **Duración de la grabación** son los segundos que se guardan; los 6 s de estabilización se suman aparte (25 s → el capturador corre 31 s). La **carpeta de salida** es automática (`datos\<movimiento>\<sujeto>\`) y el número de sesión propuesto es el siguiente libre en esa carpeta. La ruta del ejecutable se recuerda entre ejecuciones. |
+| Configuración de sesión | **Movimiento** y **Sujeto** son listas; el sujeto muestra solo los que tiene el movimiento elegido (si también existe en el nuevo movimiento, se mantiene al cambiarlo). El botón **+** de cada lista abre un campo para escribir uno nuevo (Intro añade, Esc cancela). Si el nombre ya existe en ese movimiento aparece un aviso y no se crea nada; tampoco se aceptan nombres que no sirvan como carpeta. Al añadir un movimiento se pide directamente su primer sujeto. **Duración de la grabación** son los segundos que se guardan; los 5 s de estabilización se suman aparte (25 s → el capturador corre 30 s). La **carpeta de salida** es automática (`datos\<movimiento>\<sujeto>\`) y el número de sesión propuesto es el siguiente libre en esa carpeta. La ruta del ejecutable se recuerda entre ejecuciones. |
 | Parámetros avanzados | Solo lectura. Muestran los valores que usa el backend: 125 Hz, ventana de 125 muestras, avance de 62 muestras (`window_size // 2`), saturación ±800 µV y canales A–D. |
 | CH-A … CH-D | Últimos 4 s de cada canal mientras se graba, con la amplitud pico (±µV) de lo visible. |
 | Válidas CH-x | Porcentaje de muestras de ese canal que no están en ±800 µV dentro del tramo que se guarda. |
-| Grabación | **Iniciar captura** ejecuta la captura; el mismo botón pasa a **Detener captura**. Durante los primeros 6 s el estado indica «Estabilizando» y el tiempo no avanza; después cuenta solo el tiempo que se guarda. Muestras válidas (líneas que `build-dataset` usará) y descartadas (alguna columna en ±800 µV). Al terminar, los contadores se recalculan sobre el archivo guardado. No se puede capturar mientras se entrena. |
+| Grabación | **Iniciar captura** ejecuta la captura; el mismo botón pasa a **Detener captura**. Durante los primeros 5 s el estado indica «Estabilizando» y el tiempo no avanza; después cuenta solo el tiempo que se guarda. Muestras válidas (líneas que `build-dataset` usará) y descartadas (alguna columna en ±800 µV). Al terminar, los contadores se recalculan sobre el archivo guardado. No se puede capturar mientras se entrena. |
 | Últimas grabaciones | Las cuatro capturas más recientes de `BACK/datos`, con movimiento, sujeto, duración, muestras válidas y ventanas que generarán. «Ver las N →» abre la carpeta de datos. |
 
 ### Pestaña Entrenar
@@ -107,17 +107,17 @@ La barra lateral tiene implementadas «Capturar» y «Entrenar»; las demás ent
 **Captura.** La pantalla no habla con el dispositivo directamente: ejecuta el comando ya existente
 
 ```powershell
-python -u -m digital_brain.cli capture <carpeta del exe> <carpeta de salida> --executable-name ConDumpAuto.exe --prefix .captura_ui_<id> --seconds <duración> --capture-from 6
+python -u -m digital_brain.cli capture <carpeta del exe> <carpeta de salida> --executable-name ConDumpAuto.exe --prefix .captura_ui_<id> --seconds <5 + duración> --capture-from 5
 ```
 
 con `BACK/` como directorio de trabajo. La CLI reenvía por stdout lo que imprime el capturador; cada línea `a,b,c,d` alimenta las gráficas y los contadores. Cuando la CLI termina e imprime `Datos guardados en: …`, el archivo `prefijo_1.txt` se renombra al nombre elegido en la pantalla. Notas:
 
-- «Duración de la grabación» es el tiempo guardado. La CLI recibe `--seconds <6 + duración>` y `--capture-from 6` (valor por defecto del backend), así que los 6 s iniciales que no se guardan van aparte.
+- «Duración de la grabación» es el tiempo guardado. La CLI recibe `--seconds <5 + duración>` y `--capture-from 5`, así que los 5 s iniciales que no se guardan van aparte (el valor por defecto de la CLI sigue siendo 6 s; la interfaz siempre pasa 5).
 - La CLI no tiene orden de parada. **Detener captura** termina el proceso de Python junto con el capturador y borra el archivo temporal: una captura detenida no deja archivo.
 - No se sobrescriben capturas: si el nombre ya existe, la pantalla pide otro número de sesión.
 - Los metadatos que la CLI no guarda (sujeto, notas, duración configurada, muestras) se añaden como una línea JSON a `BACK/datos_capturados/sesiones.jsonl`, carpeta ignorada por Git, para no mezclar archivos extra con los `.txt` de entrenamiento.
 
-**Entrenamiento.** **Entrenar modelo** ejecuta `build-dataset` una vez por carpeta con capturas de lo elegido: la del sujeto concreto o, con «Todos los sujetos», la de cada sujeto más la del movimiento si tiene capturas sueltas. Cada una genera `BACK/artifacts/datasets/<etiqueta>__<sujeto>.csv` (`<etiqueta>__anteriores.csv` para las sueltas) con la etiqueta del movimiento. Después ejecuta `train` con `random_forest` sobre todos esos CSV y guarda `BACK/artifacts/models/ModelMotores.pkl`. Se necesitan al menos dos movimientos. La exactitud mostrada es la que imprime `train`, sobre una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto.
+**Entrenamiento.** **Entrenar modelo** ejecuta `build-dataset` una vez por carpeta con capturas de lo elegido: la del sujeto concreto o, con «Todos los sujetos», la de cada sujeto más la del movimiento si tiene capturas sueltas. Cada una genera `BACK/artifacts/datasets/<etiqueta>__<sujeto>.csv` (`<etiqueta>__anteriores.csv` para las sueltas) con la etiqueta del movimiento. Después ejecuta `train` con `random_forest` sobre todos esos CSV y guarda `BACK/artifacts/models/ModelMotores.pkl`. Se necesitan al menos dos movimientos. Antes de llamar a Python se comprueba que cada movimiento elegido dé ventanas (cada archivo necesita al menos 125 muestras válidas, 1 s sin saturar); si no, se indica qué movimiento y sujeto fallan. Si `build-dataset` o `train` fallan igualmente, se muestra la última línea de error de Python. La exactitud mostrada es la que imprime `train`, sobre una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto.
 
 ### Arquitectura del código creado
 

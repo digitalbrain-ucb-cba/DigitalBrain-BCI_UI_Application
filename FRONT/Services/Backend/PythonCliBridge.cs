@@ -18,6 +18,8 @@ public class PythonCliBridge : IBackendBridge
         _backendRootPath = backendRootPath ?? ResolveBackendPath();
     }
 
+    public string? LastError { get; private set; }
+
     public async Task<bool> ValidatePythonEnvironmentAsync()
     {
         try
@@ -38,6 +40,7 @@ public class PythonCliBridge : IBackendBridge
         IProgress<string>? progress = null
     )
     {
+        LastError = null;
         progress?.Report($"Construyendo dataset para etiqueta '{label}'...");
 
         string args = $"-m digital_brain.cli build-dataset \"{inputDirectory}\" \"{outputCsvPath}\" \"{label}\"";
@@ -49,6 +52,7 @@ public class PythonCliBridge : IBackendBridge
             return true;
         }
 
+        LastError = LastErrorLine(result.StandardError);
         progress?.Report($"Error al construir dataset: {result.StandardError}");
         return false;
     }
@@ -60,6 +64,7 @@ public class PythonCliBridge : IBackendBridge
         IProgress<string>? progress = null
     )
     {
+        LastError = null;
         progress?.Report($"Iniciando entrenamiento ({classifierType})...");
 
         string datasetsArg = string.Join(" ", datasetPaths.Select(d => $"\"{d}\""));
@@ -81,8 +86,16 @@ public class PythonCliBridge : IBackendBridge
             return new TrainingResult(outputModelPath, accuracy, classifierType, DateTime.Now);
         }
 
+        LastError = LastErrorLine(result.StandardError);
         progress?.Report($"Error en entrenamiento: {result.StandardError}");
         return null;
+    }
+
+    /// <summary>La última línea de un traceback es la excepción; se quita el tipo si es un error de validación.</summary>
+    private static string? LastErrorLine(string standardError)
+    {
+        var line = standardError.Split('\n').Select(l => l.Trim()).LastOrDefault(l => l.Length > 0);
+        return line is null ? null : Regex.Replace(line, @"^(ValueError|FileNotFoundError):\s*", "");
     }
 
     private static string ResolveBackendPath()
