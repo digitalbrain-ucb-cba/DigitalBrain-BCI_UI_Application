@@ -12,8 +12,11 @@
             </ResourceDictionary.MergedDictionaries>
 
             <!-- Cada ViewModel de pantalla se muestra con su vista -->
-            <DataTemplate DataType="{x:Type vm:CaptureTrainingViewModel}">
-                <views:CaptureTrainingView />
+            <DataTemplate DataType="{x:Type vm:CaptureViewModel}">
+                <views:CaptureView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:TrainingViewModel}">
+                <views:TrainingView />
             </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>

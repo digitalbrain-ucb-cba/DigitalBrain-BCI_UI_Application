@@ -3,8 +3,11 @@ using DigitalBrain.UI.UseCases.Ports;
 
 namespace DigitalBrain.UI.Services.Storage;
 
-/// <summary>Lee las capturas <c>.txt</c> de <c>BACK/datos</c> con las reglas de validez del backend.</summary>
-public sealed class FileSystemRecordingRepository(IBackendEnvironment environment, ISessionLog sessionLog) : IRecordingRepository
+/// <summary>
+/// Lee las capturas <c>.txt</c> de <c>BACK/datos</c> con las reglas de validez del backend. Una captura pertenece
+/// al movimiento de su carpeta y, si está en una subcarpeta de sujeto, a ese sujeto.
+/// </summary>
+public sealed class FileSystemRecordingRepository(IBackendEnvironment environment, ISessionLog sessionLog, IDataCatalog catalog) : IRecordingRepository
 {
     public Task<int> CountAsync(CancellationToken cancellationToken = default) =>
         Task.Run(() => EnumerateCaptures().Count(), cancellationToken);
@@ -12,18 +15,19 @@ public sealed class FileSystemRecordingRepository(IBackendEnvironment environmen
     public Task<IReadOnlyList<RecordingSummary>> GetLatestAsync(int count, CancellationToken cancellationToken = default) =>
         Task.Run<IReadOnlyList<RecordingSummary>>(() =>
         {
+            var movements = catalog.GetMovements();
             return EnumerateCaptures()
                 .Select(path => new FileInfo(path))
                 .OrderByDescending(file => TruncateToMinute(file.LastWriteTime))
-                .ThenByDescending(file => SessionNumberOf(file))
+                .ThenByDescending(file => SessionNumberOf(file, movements))
                 .Take(count)
-                .Select(file => Analyze(file.FullName))
+                .Select(file => Analyze(file.FullName, movements))
                 .OfType<RecordingSummary>()
                 .ToList();
         }, cancellationToken);
 
     public Task<RecordingSummary?> AnalyzeAsync(string filePath, CancellationToken cancellationToken = default) =>
-        Task.Run(() => Analyze(filePath), cancellationToken);
+        Task.Run(() => Analyze(filePath, catalog.GetMovements()), cancellationToken);
 
     public int NextSessionNumber(MovementClass movement, string directory)
     {
@@ -35,18 +39,12 @@ public sealed class FileSystemRecordingRepository(IBackendEnvironment environmen
         return numbers.Count == 0 ? 1 : numbers.Max() + 1;
     }
 
-    public IReadOnlyList<(MovementClass Movement, string Directory)> FoldersWithRecordings() =>
-        MovementCatalog.All
-            .Select(movement => (Movement: movement, Directory: environment.Resolve(movement.DataFolder)))
-            .Where(entry => Directory.Exists(entry.Directory) && Directory.EnumerateFiles(entry.Directory, "*.txt").Any())
-            .ToList();
-
     private IEnumerable<string> EnumerateCaptures() =>
         Directory.Exists(environment.DataRoot)
             ? Directory.EnumerateFiles(environment.DataRoot, "*.txt", SearchOption.AllDirectories)
             : [];
 
-    private RecordingSummary? Analyze(string filePath)
+    private RecordingSummary? Analyze(string filePath, IReadOnlyList<MovementClass> movements)
     {
         if (!File.Exists(filePath)) return null;
 
@@ -61,19 +59,30 @@ public sealed class FileSystemRecordingRepository(IBackendEnvironment environmen
         var file = new FileInfo(filePath);
         var duration = sessionLog.FindDurationSeconds(file.Name)
                        ?? Math.Round((valid + discarded) / AcquisitionParameters.SampleRateHz);
-        return new RecordingSummary(file.Name, file.FullName, MovementOf(file), duration, valid, discarded, file.LastWriteTime);
+        var (movement, subject) = Classify(file, movements);
+        return new RecordingSummary(file.Name, file.FullName, movement, subject, duration, valid, discarded, file.LastWriteTime);
     }
 
-    private MovementClass? MovementOf(FileInfo file)
+    /// <summary>Movimiento y sujeto según la carpeta: <c>datos/&lt;movimiento&gt;/</c> o <c>datos/&lt;movimiento&gt;/&lt;sujeto&gt;/</c>.</summary>
+    private (MovementClass? Movement, string? Subject) Classify(FileInfo file, IReadOnlyList<MovementClass> movements)
     {
-        var directory = Path.TrimEndingDirectorySeparator(file.DirectoryName ?? "");
-        return MovementCatalog.All.FirstOrDefault(m =>
-                   string.Equals(Path.TrimEndingDirectorySeparator(environment.Resolve(m.DataFolder)), directory, StringComparison.OrdinalIgnoreCase))
-               ?? MovementCatalog.All.FirstOrDefault(m => m.TryGetSessionNumber(file.Name) is not null);
+        var directory = file.Directory;
+        foreach (var movement in movements)
+        {
+            var movementDirectory = catalog.MovementDirectory(movement);
+            if (SamePath(directory?.FullName, movementDirectory))
+                return (movement, null);
+            if (SamePath(directory?.Parent?.FullName, movementDirectory))
+                return (movement, directory!.Name);
+        }
+        return (movements.FirstOrDefault(m => m.TryGetSessionNumber(file.Name) is not null), null);
     }
 
-    private static int SessionNumberOf(FileInfo file) =>
-        MovementCatalog.All.Select(m => m.TryGetSessionNumber(file.Name)).OfType<int>().DefaultIfEmpty(0).Max();
+    private static bool SamePath(string? a, string b) =>
+        a is not null && string.Equals(Path.TrimEndingDirectorySeparator(a), b, StringComparison.OrdinalIgnoreCase);
+
+    private static int SessionNumberOf(FileInfo file, IReadOnlyList<MovementClass> movements) =>
+        movements.Select(m => m.TryGetSessionNumber(file.Name)).OfType<int>().DefaultIfEmpty(0).Max();
 
     private static DateTime TruncateToMinute(DateTime time) =>
         new(time.Year, time.Month, time.Day, time.Hour, time.Minute, 0, time.Kind);

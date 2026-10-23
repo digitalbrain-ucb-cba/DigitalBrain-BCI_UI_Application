@@ -64,7 +64,7 @@ El archivo capturado queda en `datos_capturados/`, una carpeta ignorada por Git;
 
 ## Interfaz WPF: pantalla «Captura y entrenamiento»
 
-Es la primera pantalla de la aplicación de escritorio (`FRONT/`, C# + WPF sobre .NET 10, MVVM con `CommunityToolkit.Mvvm`). Cubre los pasos 1 y 2 del flujo: grabar sesiones con `ConDumpAuto.exe` y entrenar el modelo con ellas. Reproduce el diseño del prototipo, con tema claro y oscuro.
+Es la primera pantalla de la aplicación de escritorio (`FRONT/`, C# + WPF sobre .NET 10, MVVM con `CommunityToolkit.Mvvm`). Cubre los pasos 1 y 2 del flujo en dos pestañas de la barra lateral: **Capturar** (grabar sesiones con `ConDumpAuto.exe`) y **Entrenar** (entrenar el modelo con ellas). Reproduce el diseño del prototipo, con tema claro y oscuro.
 
 ### Ejecutarla
 
@@ -77,17 +77,30 @@ dotnet run --project DigitalBrain.UI.csproj
 
 La aplicación localiza `BACK/` subiendo desde su carpeta de ejecución, así que debe lanzarse desde el repositorio.
 
-### Qué hace cada parte de la pantalla
+### Organización de las capturas
+
+Cada movimiento es una carpeta de `BACK/datos/` y cada sujeto una subcarpeta suya: `datos/<movimiento>/<sujeto>/*.txt`. Las carpetas se crean solas al añadir un movimiento o un sujeto desde la pantalla (y, si faltara, al grabar). No hay archivo de configuración aparte: las listas de la interfaz se leen de esas carpetas.
+
+- Los tres movimientos predefinidos conservan sus carpetas (`datos\Right\`, `datos\left\`, `datos\datos_hombro_derecho\`) y sus nombres de archivo (`Brazo derecho 26b.txt`, `Pierna izquierda 27.txt`, `Hombro derecho_11.txt`).
+- Un movimiento añadido, por ejemplo «Codo», usa `datos\Codo\`, la etiqueta `codo` (minúsculas, sin tildes, `_` en lugar de espacios) y archivos `Codo 1.txt`, `Codo 2.txt`…
+- Las capturas anteriores que están sueltas en la carpeta del movimiento no tienen sujeto; siguen contando para el entrenamiento con «Todos los sujetos».
+
+### Pestaña Capturar
 
 | Zona | Comportamiento |
 | --- | --- |
-| Configuración de sesión | Sujeto, movimiento/clase, número de sesión, duración, notas, ruta completa a `ConDumpAuto.exe` y carpeta de salida (relativa a `BACK/`). Al elegir la clase se propone su carpeta (`datos\Right\`, `datos\left\`, `datos\datos_hombro_derecho\`) y el siguiente número libre según los archivos que ya hay. «Se guardará como» muestra el nombre final, con el mismo patrón que las capturas existentes (`Brazo derecho 26b.txt`, `Pierna izquierda 27.txt`, `Hombro derecho_11.txt`). La ruta del ejecutable se recuerda entre ejecuciones. |
+| Configuración de sesión | **Movimiento** y **Sujeto** son listas; el sujeto muestra solo los que tiene el movimiento elegido (si también existe en el nuevo movimiento, se mantiene al cambiarlo). El botón **+** de cada lista abre un campo para escribir uno nuevo (Intro añade, Esc cancela). Si el nombre ya existe en ese movimiento aparece un aviso y no se crea nada; tampoco se aceptan nombres que no sirvan como carpeta. Al añadir un movimiento se pide directamente su primer sujeto. **Duración de la grabación** son los segundos que se guardan; los 6 s de estabilización se suman aparte (25 s → el capturador corre 31 s). La **carpeta de salida** es automática (`datos\<movimiento>\<sujeto>\`) y el número de sesión propuesto es el siguiente libre en esa carpeta. La ruta del ejecutable se recuerda entre ejecuciones. |
 | Parámetros avanzados | Solo lectura. Muestran los valores que usa el backend: 125 Hz, ventana de 125 muestras, avance de 62 muestras (`window_size // 2`), saturación ±800 µV y canales A–D. |
 | CH-A … CH-D | Últimos 4 s de cada canal mientras se graba, con la amplitud pico (±µV) de lo visible. |
 | Válidas CH-x | Porcentaje de muestras de ese canal que no están en ±800 µV dentro del tramo que se guarda. |
-| Grabación | **Iniciar captura** ejecuta la captura; el mismo botón pasa a **Detener captura**. Tiempo transcurrido, muestras válidas (líneas que `build-dataset` usará) y descartadas (alguna columna en ±800 µV). Al terminar, los contadores se recalculan sobre el archivo guardado. **Entrenar modelo** construye los datasets y entrena. |
-| Últimas grabaciones | Las cuatro capturas más recientes de `BACK/datos`, con clase, duración, muestras válidas y ventanas que generarán. «Ver las N →» abre la carpeta de datos. |
-| Barra lateral | Solo «Capturar y entrenar» está implementada; las demás entradas están deshabilitadas. El panel Estado indica si llega señal del casco durante la grabación, si existe `ModelMotores.pkl` y el total de grabaciones. |
+| Grabación | **Iniciar captura** ejecuta la captura; el mismo botón pasa a **Detener captura**. Durante los primeros 6 s el estado indica «Estabilizando» y el tiempo no avanza; después cuenta solo el tiempo que se guarda. Muestras válidas (líneas que `build-dataset` usará) y descartadas (alguna columna en ±800 µV). Al terminar, los contadores se recalculan sobre el archivo guardado. No se puede capturar mientras se entrena. |
+| Últimas grabaciones | Las cuatro capturas más recientes de `BACK/datos`, con movimiento, sujeto, duración, muestras válidas y ventanas que generarán. «Ver las N →» abre la carpeta de datos. |
+
+### Pestaña Entrenar
+
+Una fila por movimiento: casilla para incluirlo en el modelo, lista de sujetos («Todos los sujetos» o uno concreto) y número de grabaciones que se usarán. Hacen falta al menos dos movimientos marcados con grabaciones. La lista se vuelve a leer al entrar en la pestaña (conservando lo elegido) o con «Actualizar lista». La tarjeta Modelo muestra el estado, la exactitud del último entrenamiento, el algoritmo y el archivo. No se puede entrenar mientras se captura.
+
+La barra lateral tiene implementadas «Capturar» y «Entrenar»; las demás entradas están deshabilitadas. El panel Estado indica si llega señal del casco durante la grabación, si existe `ModelMotores.pkl` y el total de grabaciones.
 
 ### Cómo se conecta con el backend
 
@@ -99,12 +112,12 @@ python -u -m digital_brain.cli capture <carpeta del exe> <carpeta de salida> --e
 
 con `BACK/` como directorio de trabajo. La CLI reenvía por stdout lo que imprime el capturador; cada línea `a,b,c,d` alimenta las gráficas y los contadores. Cuando la CLI termina e imprime `Datos guardados en: …`, el archivo `prefijo_1.txt` se renombra al nombre elegido en la pantalla. Notas:
 
-- «Duración» es el `--seconds` de la CLI (tiempo total). Los primeros 6 s (`--capture-from`, valor por defecto del backend) no se guardan, por lo que la duración debe ser mayor que 6.
+- «Duración de la grabación» es el tiempo guardado. La CLI recibe `--seconds <6 + duración>` y `--capture-from 6` (valor por defecto del backend), así que los 6 s iniciales que no se guardan van aparte.
 - La CLI no tiene orden de parada. **Detener captura** termina el proceso de Python junto con el capturador y borra el archivo temporal: una captura detenida no deja archivo.
 - No se sobrescriben capturas: si el nombre ya existe, la pantalla pide otro número de sesión.
 - Los metadatos que la CLI no guarda (sujeto, notas, duración configurada, muestras) se añaden como una línea JSON a `BACK/datos_capturados/sesiones.jsonl`, carpeta ignorada por Git, para no mezclar archivos extra con los `.txt` de entrenamiento.
 
-**Entrenamiento.** **Entrenar modelo** ejecuta `build-dataset` para cada carpeta de clase que tenga capturas (`BACK/artifacts/datasets/<etiqueta>.csv`, con etiquetas `brazo_derecho`, `pierna_izquierda`, `hombro_derecho`) y después `train` con `random_forest` sobre todos esos CSV, guardando `BACK/artifacts/models/ModelMotores.pkl`. Se necesitan capturas de al menos dos clases. La exactitud mostrada es la que imprime `train`, sobre una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto.
+**Entrenamiento.** **Entrenar modelo** ejecuta `build-dataset` una vez por carpeta con capturas de lo elegido: la del sujeto concreto o, con «Todos los sujetos», la de cada sujeto más la del movimiento si tiene capturas sueltas. Cada una genera `BACK/artifacts/datasets/<etiqueta>__<sujeto>.csv` (`<etiqueta>__anteriores.csv` para las sueltas) con la etiqueta del movimiento. Después ejecuta `train` con `random_forest` sobre todos esos CSV y guarda `BACK/artifacts/models/ModelMotores.pkl`. Se necesitan al menos dos movimientos. La exactitud mostrada es la que imprime `train`, sobre una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto.
 
 ### Arquitectura del código creado
 
@@ -115,19 +128,21 @@ FRONT/
 ├── Models/                       # Dominio: sin WPF ni procesos
 │   ├── AcquisitionParameters.cs  # 125 Hz, ventana 125, avance 62, ±800 µV, canales; cálculo de ventanas
 │   ├── SignalValidity.cs         # Lectura de una línea y regla de saturación (equivalente a parse_sample)
-│   ├── MovementClass.cs          # Clase/movimiento: etiqueta, carpeta, patrón de nombre; MovementCatalog
+│   ├── MovementClass.cs          # Clase/movimiento: etiqueta, carpeta, patrón de nombre; predefinidos y añadidos
+│   ├── CatalogNames.cs           # Reglas de nombres de movimiento/sujeto (sirven de carpeta)
 │   ├── RecordingPlan.cs          # Datos de una grabación y sus validaciones
 │   ├── CaptureStatistics.cs      # Contadores válidas/descartadas, total y por canal (seguro entre hilos)
 │   └── RecordingSummary.cs       # Resumen de un archivo guardado
 ├── UseCases/                     # Casos de uso
-│   ├── Ports/                    # ICaptureGateway, IRecordingRepository, ISessionLog,
+│   ├── Ports/                    # ICaptureGateway, IRecordingRepository, IDataCatalog, ISessionLog,
 │   │                             # IBackendEnvironment, ISettingsStore
 │   ├── RecordSessionUseCase.cs   # Valida, captura, analiza el archivo y registra metadatos
-│   └── TrainModelUseCase.cs      # build-dataset por clase + train
+│   └── TrainModelUseCase.cs      # build-dataset por movimiento/sujeto elegido + train
 ├── Services/                     # Adaptadores (infraestructura)
 │   ├── Backend/BackendEnvironment.cs        # Localiza BACK/ y el intérprete de Python
 │   ├── Backend/PythonCliCaptureGateway.cs   # Ejecuta `digital_brain.cli capture` y lee su salida
 │   ├── Backend/PythonCliBridge.cs           # (existente) build-dataset y train
+│   ├── Storage/FileSystemDataCatalog.cs     # Movimientos y sujetos = carpetas de BACK/datos
 │   ├── Storage/FileSystemRecordingRepository.cs  # Lista y analiza capturas de BACK/datos
 │   ├── Storage/JsonlSessionLog.cs           # BACK/datos_capturados/sesiones.jsonl
 │   ├── Storage/JsonSettingsStore.cs         # %LOCALAPPDATA%\DigitalBrain\ui-settings.json
@@ -135,16 +150,17 @@ FRONT/
 │   └── Theme/ThemeService.cs                # Cambio de tema claro/oscuro
 ├── ViewModels/                   # Presentación
 │   ├── MainViewModel.cs          # Barra lateral, tema y vista activa
-│   ├── CaptureTrainingViewModel.cs
+│   ├── CaptureViewModel.cs       # Pestaña Capturar
+│   ├── TrainingViewModel.cs, TrainingMovementViewModel.cs  # Pestaña Entrenar
 │   ├── ChannelViewModel.cs, RecordingItemViewModel.cs, SystemStatusViewModel.cs
-├── Views/                        # MainWindow.xaml (contenedor) y CaptureTrainingView.xaml
+├── Views/                        # MainWindow.xaml (contenedor), CaptureView.xaml y TrainingView.xaml
 ├── Controls/SignalTrace.cs       # Traza ligera de un canal (sin ejes, como el diseño)
-├── Converters/InverseBooleanConverter.cs
+├── Converters/                   # InverseBooleanConverter, InverseBooleanToVisibilityConverter
 └── Styles/                       # Colors.xaml (fuentes, iconos), ControlStyles.xaml,
                                   # Themes/Light.xaml y Themes/Dark.xaml (mismas claves)
 ```
 
-Flujo de una grabación: `CaptureTrainingView` → `CaptureTrainingViewModel.ToggleCaptureCommand` → `RecordSessionUseCase` → `ICaptureGateway` (`PythonCliCaptureGateway` → CLI de Python → `ConDumpAuto.exe`). Las muestras llegan en un hilo de fondo al `SignalRingBuffer` y a `CaptureStatistics`; un temporizador de interfaz a ~30 FPS refresca gráficas y contadores. Todo se registra en el contenedor de dependencias de `App.xaml.cs`, y `App.xaml` asocia `CaptureTrainingViewModel` con su vista mediante un `DataTemplate`.
+Flujo de una grabación: `CaptureView` → `CaptureViewModel.ToggleCaptureCommand` → `RecordSessionUseCase` → `ICaptureGateway` (`PythonCliCaptureGateway` → CLI de Python → `ConDumpAuto.exe`). Las muestras llegan en un hilo de fondo al `SignalRingBuffer` y a `CaptureStatistics`; un temporizador de interfaz a ~30 FPS refresca gráficas y contadores. Todo se registra en el contenedor de dependencias de `App.xaml.cs`, y `App.xaml` asocia `CaptureViewModel` y `TrainingViewModel` con sus vistas mediante `DataTemplate`.
 
 Para añadir otra pantalla: crear su ViewModel (heredando de `BaseViewModel`) y su vista, registrar el ViewModel en `App.xaml.cs`, añadir el `DataTemplate` en `App.xaml` y un comando de navegación en `MainViewModel`.
 

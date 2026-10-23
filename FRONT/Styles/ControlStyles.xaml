@@ -289,6 +289,61 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
+    <!-- Casilla -->
+    <Style x:Key="CheckStyle" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel x:Name="Root" Orientation="Horizontal" Background="Transparent">
+                        <Border x:Name="Box" Width="22" Height="22" CornerRadius="6" BorderThickness="1.5" VerticalAlignment="Center"
+                                BorderBrush="{DynamicResource InputBorderBrush}" Background="{DynamicResource InputBackgroundBrush}">
+                            <Path x:Name="Mark" Data="{StaticResource IconCheck}" Stroke="{DynamicResource AccentForegroundBrush}" StrokeThickness="2"
+                                  Width="12" Height="10" Stretch="Uniform" Visibility="Collapsed"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                        </Border>
+                        <ContentPresenter Margin="14,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Mark" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource InputFocusBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Aviso bajo un campo; se oculta si no hay texto -->
+    <Style x:Key="WarningTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13.5" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="0,8,0,0" />
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+        <Style.Triggers>
+            <Trigger Property="Text" Value="">
+                <Setter Property="Visibility" Value="Collapsed" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="HintTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13.5" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="0,8,0,0" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+
     <!-- Barra de porcentaje -->
     <Style x:Key="ThinProgressStyle" TargetType="ProgressBar">
         <Setter Property="Height" Value="6" />
@@ -309,4 +364,5 @@
 
     <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     <converters:InverseBooleanConverter x:Key="InverseBool" />
+    <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
 </ResourceDictionary>

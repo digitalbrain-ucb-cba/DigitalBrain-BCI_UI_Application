@@ -12,6 +12,16 @@ public partial class SystemStatusViewModel : ObservableObject
     [ObservableProperty] private string _robotDetail = "Wi-Fi";
     [ObservableProperty] private int _recordingCount;
     [ObservableProperty] private string _recordingCountText = "— grabaciones";
+    /// <summary>Hay una captura en curso; las pantallas lo usan para no entrenar a la vez.</summary>
+    [ObservableProperty] private bool _isCapturing;
+    /// <summary>Hay un entrenamiento en curso; las pantallas lo usan para no capturar a la vez.</summary>
+    [ObservableProperty] private bool _isTraining;
+
+    public void RefreshModel(string modelPath)
+    {
+        IsModelReady = File.Exists(modelPath);
+        ModelDetail = IsModelReady ? Path.GetFileName(modelPath) : "sin entrenar";
+    }
 
     partial void OnRecordingCountChanged(int value) =>
         RecordingCountText = value == 1 ? "1 grabación" : $"{value} grabaciones";

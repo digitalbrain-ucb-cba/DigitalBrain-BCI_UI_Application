@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Windows.Threading;
@@ -13,18 +14,18 @@ using DigitalBrain.UI.UseCases.Ports;
 namespace DigitalBrain.UI.ViewModels;
 
 /// <summary>
-/// Pantalla «Captura y entrenamiento» (pasos 1 y 2): configura la sesión, graba con el backend,
-/// muestra los cuatro canales en vivo y entrena el modelo con las capturas guardadas.
+/// Pantalla «Capturar» (paso 1): elige o añade movimiento y sujeto, graba con el backend en
+/// <c>datos/&lt;movimiento&gt;/&lt;sujeto&gt;/</c> y muestra los cuatro canales en vivo.
 /// </summary>
-public partial class CaptureTrainingViewModel : BaseViewModel
+public partial class CaptureViewModel : BaseViewModel
 {
     private const int VisibleSamples = 500; // 4 s a 125 Hz
     private const int RecentCount = 4;
     private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-ES");
 
     private readonly RecordSessionUseCase _recordSession;
-    private readonly TrainModelUseCase _trainModel;
     private readonly IRecordingRepository _recordings;
+    private readonly IDataCatalog _catalog;
     private readonly IBackendEnvironment _environment;
     private readonly ISettingsStore _settings;
     private readonly IDialogService _dialogs;
@@ -34,27 +35,29 @@ public partial class CaptureTrainingViewModel : BaseViewModel
     private readonly Stopwatch _clock = new();
     private CancellationTokenSource? _captureCts;
     private double _captureFromSeconds = AcquisitionParameters.DefaultCaptureFromSeconds;
+    private double _captureDurationSeconds;
     private double _captureTotalSeconds;
 
-    public CaptureTrainingViewModel(
+    public CaptureViewModel(
         RecordSessionUseCase recordSession,
-        TrainModelUseCase trainModel,
         IRecordingRepository recordings,
+        IDataCatalog catalog,
         IBackendEnvironment environment,
         ISettingsStore settings,
         IDialogService dialogs,
         SignalRingBuffer buffer,
         SystemStatusViewModel status)
     {
-        Title = "Captura y entrenamiento";
+        Title = "Capturar";
         _recordSession = recordSession;
-        _trainModel = trainModel;
         _recordings = recordings;
+        _catalog = catalog;
         _environment = environment;
         _settings = settings;
         _dialogs = dialogs;
         _buffer = buffer;
         Status = status;
+        Status.PropertyChanged += OnStatusChanged;
 
         Channels =
         [
@@ -67,24 +70,39 @@ public partial class CaptureTrainingViewModel : BaseViewModel
         _executablePath = settings.Load().ExecutablePath ?? "";
         _refreshTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, (_, _) => RefreshLive(), Dispatcher.CurrentDispatcher);
 
-        SelectedMovement = Movements[0];
+        ReloadMovements();
         UpdateRecordingCounters(CaptureSnapshot.Empty, TimeSpan.Zero);
+        UpdateDurationTexts();
         _ = LoadAsync();
     }
 
     public SystemStatusViewModel Status { get; }
-    public IReadOnlyList<MovementClass> Movements { get; } = MovementCatalog.All;
+    public ObservableCollection<MovementClass> Movements { get; } = [];
+    public ObservableCollection<string> Subjects { get; } = [];
     public IReadOnlyList<ChannelViewModel> Channels { get; }
     public ObservableCollection<RecordingItemViewModel> RecentRecordings { get; } = [];
 
     // ---- Configuración de sesión ----
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(FileNamePreview))] private string _subjectId = "";
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(FileNamePreview))] private MovementClass? _selectedMovement;
+    [ObservableProperty] private string? _selectedSubject;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(FileNamePreview))] private string _sessionNumberText = "1";
     [ObservableProperty] private string _durationText = "25";
+    [ObservableProperty] private string _durationHint = "";
     [ObservableProperty] private string _notes = "";
     [ObservableProperty] private string _executablePath;
     [ObservableProperty] private string _outputFolder = "";
+
+    // ---- Añadir movimiento o sujeto ----
+    [ObservableProperty] private bool _isAddingMovement;
+    [ObservableProperty] private string _newMovementName = "";
+    [ObservableProperty] private string _movementWarning = "";
+    [ObservableProperty] private bool _isAddingSubject;
+    [ObservableProperty] private string _newSubjectName = "";
+    [ObservableProperty] private string _subjectWarning = "";
+
+    public bool HasSubjects => Subjects.Count > 0;
+    public bool ShowNoSubjectsHint => !HasSubjects && !IsAddingSubject;
+    public string DiscardedSecondsText { get; } = $"{AcquisitionParameters.DefaultCaptureFromSeconds:0} s";
 
     public string FileNamePreview =>
         SelectedMovement is not null && int.TryParse(SessionNumberText, out var number) && number > 0
@@ -100,8 +118,7 @@ public partial class CaptureTrainingViewModel : BaseViewModel
     public string ChannelsText { get; } = string.Join(", ", AcquisitionParameters.ChannelNames);
 
     // ---- Grabación ----
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(TrainModelCommand))] private bool _isCapturing;
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ToggleCaptureCommand))] private bool _isTraining;
+    [ObservableProperty] private bool _isCapturing;
     [ObservableProperty] private string _elapsedText = "00:00";
     [ObservableProperty] private string _durationLabel = "de 00:25";
     [ObservableProperty] private string _validSamplesText = "0";
@@ -112,19 +129,28 @@ public partial class CaptureTrainingViewModel : BaseViewModel
     [ObservableProperty] private bool _isError;
     [ObservableProperty] private string _viewAllText = "Ver todas →";
 
+    public override void OnNavigatedTo()
+    {
+        // Las carpetas pueden haber cambiado fuera de la aplicación.
+        if (!IsCapturing) ReloadMovements();
+    }
+
     partial void OnSelectedMovementChanged(MovementClass? value)
     {
-        if (value is null) return;
-        OutputFolder = value.DataFolder + Path.DirectorySeparatorChar;
+        CancelAddMovement();
+        CancelAddSubject();
+        ReloadSubjects(keep: SelectedSubject);
     }
 
-    partial void OnOutputFolderChanged(string value) => SuggestSessionNumber();
-
-    partial void OnDurationTextChanged(string value)
+    partial void OnSelectedSubjectChanged(string? value)
     {
-        if (!IsCapturing)
-            DurationLabel = $"de {FormatTime(TimeSpan.FromSeconds(ParseDuration() ?? 0))}";
+        OutputFolder = SelectedMovement is not null && value is not null
+            ? ToDisplayPath(_catalog.SubjectDirectory(SelectedMovement, value))
+            : "";
+        SuggestSessionNumber();
     }
+
+    partial void OnDurationTextChanged(string value) => UpdateDurationTexts();
 
     partial void OnExecutablePathChanged(string value) =>
         _settings.Save(_settings.Load() with { ExecutablePath = value });
@@ -134,18 +160,92 @@ public partial class CaptureTrainingViewModel : BaseViewModel
         if (!IsCapturing) RecordingFile = FileNamePreview;
     }
 
+    partial void OnIsCapturingChanged(bool value) => Status.IsCapturing = value;
+
+    partial void OnNewMovementNameChanged(string value) => MovementWarning = "";
+
+    partial void OnNewSubjectNameChanged(string value) => SubjectWarning = "";
+
+    partial void OnIsAddingSubjectChanged(bool value) => OnPropertyChanged(nameof(ShowNoSubjectsHint));
+
+    private void OnStatusChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SystemStatusViewModel.IsTraining))
+            ToggleCaptureCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand]
+    private void StartAddMovement()
+    {
+        NewMovementName = "";
+        MovementWarning = "";
+        IsAddingMovement = true;
+    }
+
+    [RelayCommand]
+    private void ConfirmAddMovement()
+    {
+        var result = _catalog.AddMovement(NewMovementName);
+        if (!result.Succeeded)
+        {
+            MovementWarning = result.AlreadyExists
+                ? $"{result.Error} Elígelo en la lista o escribe otro nombre."
+                : result.Error!;
+            return;
+        }
+
+        ReloadMovements(select: result.Value);
+        ShowMessage($"Movimiento «{result.Value!.DisplayName}» añadido en {ToDisplayPath(_catalog.MovementDirectory(result.Value))}.");
+        // Un movimiento nuevo aún no tiene sujetos: se pide el primero directamente.
+        StartAddSubject();
+    }
+
+    [RelayCommand]
+    private void CancelAddMovement()
+    {
+        IsAddingMovement = false;
+        MovementWarning = "";
+    }
+
+    [RelayCommand]
+    private void StartAddSubject()
+    {
+        if (SelectedMovement is null) return;
+        NewSubjectName = "";
+        SubjectWarning = "";
+        IsAddingSubject = true;
+    }
+
+    [RelayCommand]
+    private void ConfirmAddSubject()
+    {
+        if (SelectedMovement is null) return;
+        var result = _catalog.AddSubject(SelectedMovement, NewSubjectName);
+        if (!result.Succeeded)
+        {
+            SubjectWarning = result.AlreadyExists
+                ? $"{result.Error} Elígelo en la lista o escribe otro nombre."
+                : result.Error!;
+            return;
+        }
+
+        IsAddingSubject = false;
+        ReloadSubjects(keep: result.Value);
+        ShowMessage($"Sujeto «{result.Value}» añadido en {OutputFolder}.");
+    }
+
+    [RelayCommand]
+    private void CancelAddSubject()
+    {
+        IsAddingSubject = false;
+        SubjectWarning = "";
+    }
+
     [RelayCommand]
     private void BrowseExecutable()
     {
         if (_dialogs.PickExecutable(ExecutablePath) is { } path)
             ExecutablePath = path;
-    }
-
-    [RelayCommand]
-    private void BrowseOutputFolder()
-    {
-        if (_dialogs.PickFolder(_environment.Resolve(OutputFolder)) is { } folder)
-            OutputFolder = ToDisplayPath(folder);
     }
 
     [RelayCommand]
@@ -170,17 +270,21 @@ public partial class CaptureTrainingViewModel : BaseViewModel
             return;
         }
 
+        CancelAddMovement();
+        CancelAddSubject();
         _captureFromSeconds = plan.CaptureFromSeconds;
-        _captureTotalSeconds = plan.DurationSeconds;
+        _captureDurationSeconds = plan.DurationSeconds;
+        _captureTotalSeconds = plan.TotalSeconds;
         _buffer.Clear();
         _statistics.Reset();
         _captureCts = new CancellationTokenSource();
         IsCapturing = true;
         Status.IsHeadsetStreaming = false;
-        RecordingState = "Grabando";
+        RecordingState = "Iniciando";
         RecordingFile = plan.FileName;
         DurationLabel = $"de {FormatTime(TimeSpan.FromSeconds(plan.DurationSeconds))}";
-        ShowMessage($"Iniciando {Path.GetFileName(plan.ExecutablePath)} con la CLI de captura; se guarda desde el segundo {plan.CaptureFromSeconds:0}.");
+        ShowMessage($"Iniciando {Path.GetFileName(plan.ExecutablePath)}: {plan.CaptureFromSeconds:0} s de estabilización sin guardar " +
+                    $"y {plan.DurationSeconds.ToString("0.#", Es)} s de grabación (total {FormatTime(TimeSpan.FromSeconds(plan.TotalSeconds))}).");
         _clock.Restart();
         _refreshTimer.Start();
 
@@ -195,7 +299,7 @@ public partial class CaptureTrainingViewModel : BaseViewModel
             {
                 ValidSamplesText = recording.ValidSamples.ToString("N0", Es);
                 DiscardedText = recording.DiscardedSamples.ToString("N0", Es);
-                ShowMessage($"{recording.FileName}: {recording.ValidSamples.ToString("N0", Es)} muestras válidas y {recording.Windows} ventanas para el dataset.");
+                ShowMessage($"{recording.FileName} ({plan.SubjectId}): {recording.ValidSamples.ToString("N0", Es)} muestras válidas y {recording.Windows} ventanas para el dataset.");
                 await LoadAsync();
             }
             else if (result.Cancelled)
@@ -223,43 +327,7 @@ public partial class CaptureTrainingViewModel : BaseViewModel
         }
     }
 
-    private bool CanToggleCapture() => !IsTraining;
-
-    [RelayCommand(CanExecute = nameof(CanTrain))]
-    private async Task TrainModelAsync()
-    {
-        IsTraining = true;
-        ShowMessage("Preparando datasets…");
-        try
-        {
-            var progress = new Progress<string>(line =>
-            {
-                if (!string.IsNullOrWhiteSpace(line)) ShowMessage(line.Trim());
-            });
-            var result = await _trainModel.ExecuteAsync(progress);
-            if (result.Succeeded && result.Training is { } training)
-            {
-                var classes = string.Join(", ", result.Classes.Select(c => c.DisplayName.ToLowerInvariant()));
-                ShowMessage($"Modelo guardado en {Path.GetFileName(training.ModelPath)} ({classes}). " +
-                            $"Exactitud {training.Accuracy.ToString("P1", Es)} sobre una división aleatoria de ventanas, no por sesión.");
-                RefreshModelStatus();
-            }
-            else
-            {
-                ShowMessage(result.Error ?? "No se pudo entrenar el modelo.", isError: true);
-            }
-        }
-        catch (Exception ex)
-        {
-            ShowMessage($"Error al entrenar: {ex.Message}", isError: true);
-        }
-        finally
-        {
-            IsTraining = false;
-        }
-    }
-
-    private bool CanTrain() => !IsCapturing;
+    private bool CanToggleCapture() => !Status.IsTraining;
 
     private void OnSample(SignalSample sample)
     {
@@ -292,10 +360,16 @@ public partial class CaptureTrainingViewModel : BaseViewModel
             Channels[i].RangeText = $"±{peak:0} µV";
         }
 
-        var elapsed = _clock.Elapsed;
-        if (ParseDuration() is { } total && elapsed.TotalSeconds > total)
-            elapsed = TimeSpan.FromSeconds(total);
-        UpdateRecordingCounters(_statistics.Snapshot(), elapsed);
+        // El tiempo mostrado es el guardado: los segundos de estabilización van aparte.
+        var elapsed = _clock.Elapsed.TotalSeconds;
+        if (IsCapturing)
+        {
+            RecordingState = elapsed < _captureFromSeconds
+                ? $"Estabilizando, {Math.Ceiling(_captureFromSeconds - elapsed):0} s sin guardar ·"
+                : "Grabando";
+        }
+        var recorded = Math.Clamp(elapsed - _captureFromSeconds, 0, _captureDurationSeconds);
+        UpdateRecordingCounters(_statistics.Snapshot(), TimeSpan.FromSeconds(recorded));
     }
 
     private void UpdateRecordingCounters(CaptureSnapshot snapshot, TimeSpan elapsed)
@@ -308,6 +382,22 @@ public partial class CaptureTrainingViewModel : BaseViewModel
             var ratio = snapshot.ChannelValidRatios[i];
             Channels[i].ValidRatio = ratio ?? 0;
             Channels[i].ValidText = ratio is null ? "—" : ratio.Value.ToString("P1", Es);
+        }
+    }
+
+    private void UpdateDurationTexts()
+    {
+        var discard = AcquisitionParameters.DefaultCaptureFromSeconds;
+        if (ParseDuration() is { } duration)
+        {
+            DurationHint = $"Se graban {duration.ToString("0.#", Es)} s. Aparte, el capturador corre {discard:0} s antes " +
+                           $"para estabilizar la señal, que no se guardan: total {FormatTime(TimeSpan.FromSeconds(discard + duration))}.";
+            if (!IsCapturing) DurationLabel = $"de {FormatTime(TimeSpan.FromSeconds(duration))}";
+        }
+        else
+        {
+            DurationHint = $"Segundos que se guardan. Aparte se suman {discard:0} s iniciales de estabilización que no se guardan.";
+            if (!IsCapturing) DurationLabel = "de 00:00";
         }
     }
 
@@ -327,19 +417,61 @@ public partial class CaptureTrainingViewModel : BaseViewModel
         {
             ShowMessage($"No se pudieron leer las grabaciones de {_environment.DataRoot}: {ex.Message}", isError: true);
         }
-        RefreshModelStatus();
+        Status.RefreshModel(_environment.ModelPath);
     }
 
-    private void RefreshModelStatus()
+    private void ReloadMovements(MovementClass? select = null)
     {
-        Status.IsModelReady = File.Exists(_environment.ModelPath);
-        Status.ModelDetail = Status.IsModelReady ? Path.GetFileName(_environment.ModelPath) : "sin entrenar";
+        var label = select?.Label ?? SelectedMovement?.Label;
+        var subject = SelectedSubject;
+        Movements.Clear();
+        try
+        {
+            foreach (var movement in _catalog.GetMovements())
+                Movements.Add(movement);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowMessage($"No se pudieron leer las carpetas de {_environment.DataRoot}: {ex.Message}", isError: true);
+        }
+        SelectedMovement = Movements.FirstOrDefault(m => m.Label == label) ?? Movements.FirstOrDefault();
+        // Al vaciar la lista, el ComboBox deja la selección en null y se pierde el sujeto: se restaura aquí.
+        ReloadSubjects(keep: subject);
+    }
+
+    /// <summary>Recarga los sujetos del movimiento elegido y mantiene <paramref name="keep"/> si también existe en él.</summary>
+    private void ReloadSubjects(string? keep)
+    {
+        Subjects.Clear();
+        if (SelectedMovement is not null)
+        {
+            try
+            {
+                foreach (var subject in _catalog.GetSubjects(SelectedMovement))
+                    Subjects.Add(subject);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                ShowMessage($"No se pudieron leer los sujetos de {SelectedMovement.DisplayName}: {ex.Message}", isError: true);
+            }
+        }
+        OnPropertyChanged(nameof(HasSubjects));
+        OnPropertyChanged(nameof(ShowNoSubjectsHint));
+
+        var subjectToSelect = Subjects.FirstOrDefault(s => string.Equals(s, keep, StringComparison.CurrentCultureIgnoreCase))
+                              ?? Subjects.FirstOrDefault();
+        // Forzar la notificación aunque el nombre no cambie: la carpeta de salida depende también del movimiento.
+        SelectedSubject = null;
+        SelectedSubject = subjectToSelect;
     }
 
     private void SuggestSessionNumber()
     {
         if (SelectedMovement is null || IsCapturing) return;
-        SessionNumberText = _recordings.NextSessionNumber(SelectedMovement, _environment.Resolve(OutputFolder)).ToString(CultureInfo.InvariantCulture);
+        var directory = SelectedSubject is null
+            ? _catalog.MovementDirectory(SelectedMovement)
+            : _catalog.SubjectDirectory(SelectedMovement, SelectedSubject);
+        SessionNumberText = _recordings.NextSessionNumber(SelectedMovement, directory).ToString(CultureInfo.InvariantCulture);
         RecordingFile = FileNamePreview;
     }
 
@@ -350,6 +482,11 @@ public partial class CaptureTrainingViewModel : BaseViewModel
             ShowMessage("Elige el movimiento o clase.", isError: true);
             return null;
         }
+        if (SelectedSubject is null)
+        {
+            ShowMessage("Elige el sujeto o añade uno nuevo con «+».", isError: true);
+            return null;
+        }
         if (!int.TryParse(SessionNumberText, out var session))
         {
             ShowMessage("El número de sesión debe ser un entero.", isError: true);
@@ -357,15 +494,15 @@ public partial class CaptureTrainingViewModel : BaseViewModel
         }
         if (ParseDuration() is not { } duration)
         {
-            ShowMessage("La duración debe ser un número de segundos.", isError: true);
+            ShowMessage("La duración debe ser un número de segundos mayor que cero.", isError: true);
             return null;
         }
 
         return new RecordingPlan(
-            SubjectId.Trim(), SelectedMovement, session, duration,
+            SelectedSubject, SelectedMovement, session, duration,
             string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim(),
             ExecutablePath.Trim().Trim('"'),
-            _environment.Resolve(OutputFolder));
+            _catalog.SubjectDirectory(SelectedMovement, SelectedSubject));
     }
 
     private double? ParseDuration() =>

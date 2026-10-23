@@ -33,6 +33,7 @@ public partial class App : Application
         });
         services.AddSingleton<ICaptureGateway, PythonCliCaptureGateway>();
         services.AddSingleton<ISessionLog, JsonlSessionLog>();
+        services.AddSingleton<IDataCatalog, FileSystemDataCatalog>();
         services.AddSingleton<IRecordingRepository, FileSystemRecordingRepository>();
         services.AddSingleton<SignalRingBuffer>();
         services.AddSingleton<IDialogService, WpfDialogService>();
@@ -48,7 +49,9 @@ public partial class App : Application
 
         // ViewModels y Ventana Principal
         services.AddSingleton<SystemStatusViewModel>();
-        services.AddSingleton<CaptureTrainingViewModel>();
+        // Singletons: una captura sigue en curso aunque se cambie de pestaña.
+        services.AddSingleton<CaptureViewModel>();
+        services.AddSingleton<TrainingViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 
@@ -62,7 +65,7 @@ public partial class App : Application
         themeService.Apply(themeService.Current);
 
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-        _serviceProvider.GetRequiredService<INavigationService>().NavigateTo<CaptureTrainingViewModel>();
+        _serviceProvider.GetRequiredService<INavigationService>().NavigateTo<CaptureViewModel>();
         mainWindow.Show();
     }
 }

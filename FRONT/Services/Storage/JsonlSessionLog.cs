@@ -7,6 +7,8 @@ namespace DigitalBrain.UI.Services.Storage;
 /// <summary>
 /// Guarda una línea JSON por sesión en <c>BACK/datos_capturados/sesiones.jsonl</c> (carpeta ignorada por Git),
 /// para no mezclar metadatos con los <c>.txt</c> que lee <c>build-dataset</c>.
+/// <c>DurationSeconds</c> es el tiempo guardado y <c>TotalSeconds</c> el que corrió el capturador
+/// (las entradas anteriores a ese campo guardaban el total en <c>DurationSeconds</c>).
 /// </summary>
 public sealed class JsonlSessionLog(IBackendEnvironment environment) : ISessionLog
 {
@@ -20,7 +22,7 @@ public sealed class JsonlSessionLog(IBackendEnvironment environment) : ISessionL
         var entry = new SessionLogEntry(
             result.FileName, result.FullPath, plan.SubjectId, plan.Movement.Label, plan.SessionNumber,
             plan.DurationSeconds, plan.CaptureFromSeconds, plan.Notes, result.ValidSamples, result.DiscardedSamples,
-            result.Windows, DateTime.Now);
+            result.Windows, DateTime.Now, plan.TotalSeconds);
 
         Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
         await File.AppendAllTextAsync(LogPath, JsonSerializer.Serialize(entry) + Environment.NewLine, cancellationToken);
@@ -62,5 +64,5 @@ public sealed class JsonlSessionLog(IBackendEnvironment environment) : ISessionL
     private sealed record SessionLogEntry(
         string FileName, string FullPath, string SubjectId, string Movement, int SessionNumber,
         double DurationSeconds, double CaptureFromSeconds, string? Notes, long ValidSamples, long DiscardedSamples,
-        int Windows, DateTime CapturedAt);
+        int Windows, DateTime CapturedAt, double TotalSeconds = 0);
 }

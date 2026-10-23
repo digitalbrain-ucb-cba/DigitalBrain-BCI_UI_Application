@@ -71,11 +71,11 @@
                         </StackPanel>
                     </Button>
 
-                    <Button Command="{Binding NavigateCaptureTrainingCommand}">
+                    <Button Command="{Binding NavigateCaptureCommand}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsCaptureTrainingActive}" Value="True">
+                                    <DataTrigger Binding="{Binding IsCaptureActive}" Value="True">
                                         <Setter Property="Tag" Value="Active" />
                                         <Setter Property="Foreground" Value="{DynamicResource SidebarActiveTextBrush}" />
                                     </DataTrigger>
@@ -85,8 +85,29 @@
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{StaticResource IconPulse}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource AccentBrush}" Margin="0,0,20,0" />
                             <StackPanel>
-                                <TextBlock Text="Capturar y entrenar" Style="{StaticResource NavTitle}" FontWeight="SemiBold" />
-                                <TextBlock Text="Graba y enseña al modelo" FontSize="13.5"
+                                <TextBlock Text="Capturar" Style="{StaticResource NavTitle}" FontWeight="SemiBold" />
+                                <TextBlock Text="Graba sesiones de EEG" FontSize="13.5"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Opacity="0.75" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding NavigateTrainingCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsTrainingActive}" Value="True">
+                                        <Setter Property="Tag" Value="Active" />
+                                        <Setter Property="Foreground" Value="{DynamicResource SidebarActiveTextBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconBars}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource AccentBrush}" Margin="0,0,20,0" />
+                            <StackPanel>
+                                <TextBlock Text="Entrenar" Style="{StaticResource NavTitle}" FontWeight="SemiBold" />
+                                <TextBlock Text="Enseña al modelo" FontSize="13.5"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Opacity="0.75" />
                             </StackPanel>
                         </StackPanel>

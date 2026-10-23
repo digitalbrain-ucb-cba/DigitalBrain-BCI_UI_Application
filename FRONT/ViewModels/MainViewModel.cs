@@ -35,14 +35,22 @@ public partial class MainViewModel : BaseViewModel
 
     public SystemStatusViewModel Status { get; }
 
-    public bool IsCaptureTrainingActive => CurrentView is CaptureTrainingViewModel;
+    public bool IsCaptureActive => CurrentView is CaptureViewModel;
+    public bool IsTrainingActive => CurrentView is TrainingViewModel;
 
-    partial void OnCurrentViewChanged(BaseViewModel? value) => OnPropertyChanged(nameof(IsCaptureTrainingActive));
+    partial void OnCurrentViewChanged(BaseViewModel? value)
+    {
+        OnPropertyChanged(nameof(IsCaptureActive));
+        OnPropertyChanged(nameof(IsTrainingActive));
+    }
 
     partial void OnIsDarkThemeChanged(bool value) => _themeService.Apply(value ? AppTheme.Dark : AppTheme.Light);
 
     [RelayCommand]
-    private void NavigateCaptureTraining() => _navigationService.NavigateTo<CaptureTrainingViewModel>();
+    private void NavigateCapture() => _navigationService.NavigateTo<CaptureViewModel>();
+
+    [RelayCommand]
+    private void NavigateTraining() => _navigationService.NavigateTo<TrainingViewModel>();
 
     [RelayCommand]
     private void UseLightTheme() => IsDarkTheme = false;

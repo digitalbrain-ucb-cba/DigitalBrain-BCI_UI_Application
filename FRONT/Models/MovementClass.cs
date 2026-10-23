@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DigitalBrain.UI.Models;
@@ -33,13 +35,35 @@ public sealed record MovementClass(
     public override string ToString() => DisplayName;
 }
 
-/// <summary>Clases conocidas, deducidas de las carpetas de <c>BACK/datos</c>.</summary>
+/// <summary>
+/// Movimientos predefinidos (con las carpetas y nombres de archivo que ya usan las capturas existentes)
+/// y fábrica de los que se añaden desde la interfaz.
+/// </summary>
 public static class MovementCatalog
 {
-    public static readonly IReadOnlyList<MovementClass> All =
+    public static readonly IReadOnlyList<MovementClass> BuiltIn =
     [
         new("brazo_derecho", "Brazo derecho", @"datos\Right", "Brazo derecho {0}b", "#4A6478"),
         new("pierna_izquierda", "Pierna izquierda", @"datos\left", "Pierna izquierda {0}", "#B5654A"),
         new("hombro_derecho", "Hombro derecho", @"datos\datos_hombro_derecho", "Hombro derecho_{0}", "#C49A3A"),
     ];
+
+    private static readonly string[] CustomAccents = ["#5E8B6A", "#7A5C8F", "#3F7F8C", "#9A5B6E", "#8A7A3A", "#5A6E9A"];
+
+    /// <summary>Movimiento añadido desde la interfaz: su carpeta en <c>datos/</c> lleva el nombre visible.</summary>
+    public static MovementClass Custom(string displayName, int index) =>
+        new(ToLabel(displayName), displayName, Path.Combine("datos", displayName), displayName + " {0}",
+            CustomAccents[index % CustomAccents.Length]);
+
+    /// <summary>Etiqueta del dataset: minúsculas sin tildes, con «_» en lugar de espacios y símbolos.</summary>
+    public static string ToLabel(string displayName)
+    {
+        var builder = new StringBuilder();
+        foreach (var c in displayName.Normalize(NormalizationForm.FormD))
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark) continue;
+            builder.Append(char.IsAsciiLetterOrDigit(c) ? char.ToLowerInvariant(c) : '_');
+        }
+        return Regex.Replace(builder.ToString(), "_+", "_").Trim('_');
+    }
 }

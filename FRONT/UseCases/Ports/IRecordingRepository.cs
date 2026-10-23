@@ -10,6 +10,4 @@ public interface IRecordingRepository
     Task<RecordingSummary?> AnalyzeAsync(string filePath, CancellationToken cancellationToken = default);
     /// <summary>Siguiente número de sesión libre para <paramref name="movement"/> en <paramref name="directory"/>.</summary>
     int NextSessionNumber(MovementClass movement, string directory);
-    /// <summary>Carpetas de clase que contienen al menos una captura, para construir datasets.</summary>
-    IReadOnlyList<(MovementClass Movement, string Directory)> FoldersWithRecordings();
 }

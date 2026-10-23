@@ -26,6 +26,7 @@ public class NavigationService : INavigationService
     public void NavigateTo<TViewModel>() where TViewModel : BaseViewModel
     {
         _currentViewModel = _viewModelFactory(typeof(TViewModel));
+        _currentViewModel.OnNavigatedTo();
         CurrentViewModelChanged?.Invoke();
     }
 }

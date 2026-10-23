@@ -1,0 +1,188 @@
+<UserControl x:Class="DigitalBrain.UI.Views.TrainingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:DigitalBrain.UI.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:TrainingViewModel}"
+             d:DesignWidth="1200" d:DesignHeight="900">
+
+    <UserControl.Resources>
+        <Style x:Key="ColumnHeader" TargetType="TextBlock" BasedOn="{StaticResource TileLabelStyle}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="40,36,40,36">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Encabezado -->
+            <StackPanel>
+                <TextBlock Text="PASO 2 · MODELO" Style="{StaticResource SectionLabelStyle}" />
+                <TextBlock Text="Entrenar" FontFamily="{StaticResource DisplayFont}" FontSize="36" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,4" />
+                <TextBlock Text="Elige los movimientos que aprende el modelo y, en cada uno, el sujeto cuyas grabaciones se usan." FontSize="18"
+                           TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+            </StackPanel>
+
+            <Grid Grid.Row="1" Margin="0,24,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="400" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Datos de entrenamiento -->
+                <Border Style="{StaticResource CardStyle}" Padding="28,24" VerticalAlignment="Top">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,14">
+                            <Button DockPanel.Dock="Right" Style="{StaticResource LinkButtonStyle}" Content="Actualizar lista"
+                                    Command="{Binding ReloadCommand}" VerticalAlignment="Center"
+                                    IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}"
+                                    ToolTip="Volver a leer las carpetas de BACK/datos" />
+                            <TextBlock Text="Datos de entrenamiento" Style="{StaticResource CardTitleStyle}" />
+                        </DockPanel>
+
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="230" />
+                                <ColumnDefinition Width="140" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="MOVIMIENTO" Style="{StaticResource ColumnHeader}" />
+                            <TextBlock Grid.Column="1" Text="SUJETO" Style="{StaticResource ColumnHeader}" />
+                            <TextBlock Grid.Column="2" Text="GRABACIONES" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right" />
+                        </Grid>
+
+                        <ItemsControl ItemsSource="{Binding Movements}" Focusable="False"
+                                      IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:TrainingMovementViewModel}">
+                                    <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" Padding="0,12">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="230" />
+                                                <ColumnDefinition Width="140" />
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox Style="{StaticResource CheckStyle}" VerticalAlignment="Center" Margin="0,0,16,0"
+                                                      IsChecked="{Binding IsSelected}" IsEnabled="{Binding HasRecordings}"
+                                                      ToolTip="Incluir este movimiento en el modelo">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="9" Height="9" Fill="{Binding AccentHex}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                                    <TextBlock Text="{Binding Name}" FontSize="17" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </CheckBox>
+                                            <ComboBox Grid.Column="1" Style="{StaticResource ComboStyle}" ItemsSource="{Binding Subjects}"
+                                                      SelectedItem="{Binding SelectedSubject}" DisplayMemberPath="DisplayName" />
+                                            <TextBlock Grid.Column="2" Text="{Binding RecordingCountText}" FontSize="16" HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" Padding="0,18,0,0">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding TrainModelCommand}" MinWidth="200">
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Entrenar modelo" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsTraining}" Value="True">
+                                                        <Setter Property="Text" Value="Entrenando…" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Button>
+                                <TextBlock Text="{Binding SelectionSummary}" FontSize="15" TextWrapping="Wrap" VerticalAlignment="Center"
+                                           Margin="0,0,20,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </DockPanel>
+                        </Border>
+
+                        <TextBlock Text="Se está grabando una sesión: el entrenamiento se habilita al terminar la captura."
+                                   Style="{StaticResource HintTextStyle}"
+                                   Visibility="{Binding Status.IsCapturing, Converter={StaticResource BoolToVisibility}}" />
+
+                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="14" Margin="0,14,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsError}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Message}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Modelo -->
+                <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="28,24" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="Modelo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,16" />
+                        <UniformGrid Columns="2">
+                            <Border Style="{StaticResource TileStyle}" Margin="0,0,5,10">
+                                <StackPanel>
+                                    <TextBlock Text="ESTADO" Style="{StaticResource TileLabelStyle}" />
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource TileValueStyle}">
+                                                <Setter Property="Text" Value="Sin entrenar" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status.IsModelReady}" Value="True">
+                                                        <Setter Property="Text" Value="Listo" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource TileStyle}" Margin="5,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="EXACTITUD" Style="{StaticResource TileLabelStyle}" />
+                                    <TextBlock Text="{Binding AccuracyText}" Style="{StaticResource TileValueStyle}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource TileStyle}" Margin="0,0,5,0">
+                                <StackPanel>
+                                    <TextBlock Text="ALGORITMO" Style="{StaticResource TileLabelStyle}" />
+                                    <TextBlock Text="{Binding AlgorithmText}" Style="{StaticResource TileValueStyle}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource TileStyle}" Margin="5,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="ARCHIVO" Style="{StaticResource TileLabelStyle}" />
+                                    <TextBlock Text="{Binding ModelFileName}" Style="{StaticResource TileValueStyle}" FontSize="15"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ModelFileName}" />
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <TextBlock Text="{Binding TrainedClassesText}" Style="{StaticResource HintTextStyle}" Margin="0,14,0,0" />
+                        <TextBlock Style="{StaticResource HintTextStyle}" Margin="0,14,0,0"
+                                   Text="«Todos los sujetos» usa las carpetas de cada sujeto y también las grabaciones anteriores que no tienen sujeto." />
+                        <TextBlock Style="{StaticResource HintTextStyle}"
+                                   Text="La exactitud sale de una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto." />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

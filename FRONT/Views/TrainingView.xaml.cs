@@ -2,9 +2,9 @@ using System.Windows.Controls;
 
 namespace DigitalBrain.UI.Views;
 
-public partial class CaptureTrainingView : UserControl
+public partial class TrainingView : UserControl
 {
-    public CaptureTrainingView()
+    public TrainingView()
     {
         InitializeComponent();
     }

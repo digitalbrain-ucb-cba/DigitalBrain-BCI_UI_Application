@@ -22,8 +22,9 @@ public sealed class RecordSessionUseCase(
         if (errors.Count > 0)
             return RecordSessionResult.Invalid(errors);
 
+        // Crea datos/<movimiento>/<sujeto>/ si todavía no existe.
         Directory.CreateDirectory(plan.OutputDirectory);
-        var request = new CaptureRequest(plan.ExecutablePath, plan.OutputPath, plan.DurationSeconds, plan.CaptureFromSeconds);
+        var request = new CaptureRequest(plan.ExecutablePath, plan.OutputPath, plan.TotalSeconds, plan.CaptureFromSeconds);
         var outcome = await gateway.CaptureAsync(request, onSample, onLog, cancellationToken);
 
         if (!outcome.Succeeded || outcome.SavedPath is null)

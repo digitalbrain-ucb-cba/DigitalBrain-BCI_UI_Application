@@ -5,6 +5,7 @@ public sealed record RecordingSummary(
     string FileName,
     string FullPath,
     MovementClass? Movement,
+    string? Subject,
     double DurationSeconds,
     long ValidSamples,
     long DiscardedSamples,
