@@ -4,7 +4,7 @@ namespace DigitalBrain.UI.Models;
 
 /// <summary>
 /// Reglas de validez de una línea capturada, equivalentes a <c>parse_sample</c> del backend:
-/// la línea necesita cuatro valores numéricos separados por comas y se descarta si alguno vale ±800 µV.
+/// la línea necesita exactamente cuatro valores numéricos separados por comas y se descarta si alguno vale ±800 µV.
 /// </summary>
 public static class SignalValidity
 {
@@ -16,13 +16,15 @@ public static class SignalValidity
         sample = default!;
         if (string.IsNullOrWhiteSpace(line)) return false;
 
+        // Igual que is_complete_sample del backend: exactamente cuatro números, sin líneas cortadas ni columnas de más.
         var parts = line.Trim().Split(',');
-        if (parts.Length < 4) return false;
+        if (parts.Length != 4) return false;
 
         var values = new double[4];
         for (int i = 0; i < 4; i++)
         {
-            if (!double.TryParse(parts[i].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out values[i]))
+            if (!double.TryParse(parts[i].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out values[i]) ||
+                !double.IsFinite(values[i]))
                 return false;
         }
 

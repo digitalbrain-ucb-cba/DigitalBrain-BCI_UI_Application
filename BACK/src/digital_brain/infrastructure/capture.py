@@ -4,24 +4,82 @@ from collections.abc import Iterator
 import codecs
 from pathlib import Path
 import queue
+import re
 import subprocess
 import sys
 from threading import Thread
 import time
+from typing import TextIO
+
+
+_NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
+
+
+def is_complete_sample(line: str) -> bool:
+    """Una línea de señal válida tiene exactamente cuatro números separados por comas (canales A–D)."""
+    values = line.strip().split(",")
+    return len(values) == 4 and all(_NUMBER.fullmatch(value.strip()) for value in values)
 
 
 def parse_sample(line: str) -> tuple[float, float, float, float] | None:
-    values = line.strip().split(",")
-    if len(values) < 4:
+    if not is_complete_sample(line):
         return None
-    try:
-        first_four_values = [float(value) for value in values[:4]]
-    except ValueError:
-        return None
-    sample = tuple(first_four_values)
+    sample = tuple(float(value) for value in line.strip().split(","))
     if any(value in {-800, 800} for value in sample):
         return None
-    return sample  
+    return sample
+
+
+class _CaptureLineWriter:
+    """Guarda solo líneas completas, recibidas enteras dentro del tramo de captura y con cuatro valores.
+
+    La salida del capturador llega en bloques que cortan líneas por la mitad: escribir bloques tal cual dejaba
+    al principio del archivo el final de una línea (uno a tres valores, o un primer número truncado) y al final
+    una línea a medias. Una línea se descarta si empezó a llegar antes de ``capture_start`` o terminó después de
+    ``deadline``; dentro del tramo, se descarta si no es una muestra completa (cabeceras, vacías, cortadas).
+    """
+
+    def __init__(self, output_file: TextIO, capture_start: float, deadline: float) -> None:
+        self._output_file = output_file
+        self._capture_start = capture_start
+        self._deadline = deadline
+        self._partial = ""
+        self._partial_started_at: float | None = None
+        self.written = 0
+        self.rejected = 0
+
+    def feed(self, text: str, received_at: float) -> None:
+        while text:
+            newline = text.find("\n")
+            if newline < 0:
+                if self._partial_started_at is None:
+                    self._partial_started_at = received_at
+                self._partial += text
+                return
+            started_at = self._partial_started_at if self._partial_started_at is not None else received_at
+            line = self._partial + text[:newline]
+            self._partial = ""
+            self._partial_started_at = None
+            text = text[newline + 1:]
+            self._consider(line, started_at, received_at)
+
+    def finish(self) -> None:
+        """La última línea sin salto de línea puede estar cortada: no se guarda."""
+        started_at = self._partial_started_at
+        if self._partial.strip() and started_at is not None and self._capture_start <= started_at < self._deadline:
+            self.rejected += 1
+        self._partial = ""
+        self._partial_started_at = None
+
+    def _consider(self, line: str, started_at: float, ended_at: float) -> None:
+        if started_at < self._capture_start or ended_at >= self._deadline:
+            return
+        if not is_complete_sample(line):
+            if line.strip():
+                self.rejected += 1
+            return
+        self._output_file.write(line.strip() + "\n")
+        self.written += 1
 
 
 def read_samples(file_path: Path) -> Iterator[tuple[float, float, float, float]]:
@@ -94,6 +152,7 @@ class ExecutableCapture:
         try:
             with output_path.open("x", encoding="utf-8", errors="replace", newline="") as output_file:
                 decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+                writer = _CaptureLineWriter(output_file, capture_start, deadline)
                 finished_reading = False
                 while time.monotonic() < deadline and not finished_reading:
                     try:
@@ -107,9 +166,8 @@ class ExecutableCapture:
                     text = decoder.decode(chunk)
                     sys.stdout.write(text)
                     sys.stdout.flush()
-                    if capture_start <= received_at < deadline:
-                        output_file.write(text)
-                        output_file.flush()
+                    writer.feed(text, received_at)
+                    output_file.flush()
 
                 if process.poll() is None:
                     try:
@@ -137,12 +195,13 @@ class ExecutableCapture:
                     text = decoder.decode(chunk)
                     sys.stdout.write(text)
                     sys.stdout.flush()
-                    if capture_start <= received_at < deadline:
-                        output_file.write(text)
+                    writer.feed(text, received_at)
                 remaining_text = decoder.decode(b"", final=True)
                 if remaining_text:
                     sys.stdout.write(remaining_text)
                     sys.stdout.flush()
+                    writer.feed(remaining_text, time.monotonic())
+                writer.finish()
                 output_file.flush()
         finally:
             if process.poll() is None:
@@ -153,6 +212,7 @@ class ExecutableCapture:
             process.stdout.close()
 
         print("\nTiempo cumplido. Programa detenido.")
+        print(f"Líneas guardadas: {writer.written}; descartadas por estar incompletas o mal formadas: {writer.rejected}")
         print(f"Datos guardados en: {output_path}")
         return output_path
 
