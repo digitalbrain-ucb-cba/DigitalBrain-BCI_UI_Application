@@ -1,18 +1,37 @@
 namespace DigitalBrain.UI.Models;
 
 /// <summary>
-/// Parámetros fijos de adquisición y ventaneo. Reflejan los valores que usa el backend
-/// (<c>SpectralFeatureExtractor</c> y <c>build_dataset</c>) para que la interfaz muestre lo que realmente se entrena.
+/// Parámetros dinámicos de adquisición y ventaneo.
+/// Cuando se modifica la frecuencia de muestreo (<see cref="SampleRateHz"/>), se actualizan los tamaños de ventana y cálculos en todo el sistema.
 /// </summary>
 public static class AcquisitionParameters
 {
-    public const double SampleRateHz = 125.0;
-    public const int WindowSize = 125;
-    /// <summary>Avance entre ventanas: <c>window_size // 2</c> en el backend.</summary>
-    public const int WindowStep = WindowSize / 2;
+    public const double DefaultSampleRateHz = 125.0;
     public const double SaturationMicroVolts = 800.0;
     public const double DefaultCaptureFromSeconds = 6.0;
     public static readonly IReadOnlyList<string> ChannelNames = ["A", "B", "C", "D"];
+
+    private static double _sampleRateHz = DefaultSampleRateHz;
+
+    /// <summary>Evento emitido cuando la frecuencia de muestreo cambia en el sistema.</summary>
+    public static event Action? SampleRateChanged;
+
+    public static double SampleRateHz
+    {
+        get => _sampleRateHz;
+        set
+        {
+            if (value <= 0 || Math.Abs(_sampleRateHz - value) < 0.001) return;
+            _sampleRateHz = value;
+            SampleRateChanged?.Invoke();
+        }
+    }
+
+    /// <summary>Tamaño de ventana en muestras (1 segundo de señal: redondeado a entero).</summary>
+    public static int WindowSize => Math.Max(1, (int)Math.Round(SampleRateHz));
+
+    /// <summary>Avance entre ventanas: <c>window_size // 2</c> en el backend (solapamiento al 50%).</summary>
+    public static int WindowStep => Math.Max(1, WindowSize / 2);
 
     public static double OverlapRatio => 1.0 - (double)WindowStep / WindowSize;
 

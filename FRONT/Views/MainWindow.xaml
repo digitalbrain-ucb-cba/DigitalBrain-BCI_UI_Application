@@ -61,12 +61,34 @@
                 <StackPanel DockPanel.Dock="Top" Margin="0,22,0,0">
                     <TextBlock Text="PRINCIPAL" Style="{StaticResource SidebarSection}" />
 
-                    <Button Style="{StaticResource NavButtonStyle}" IsEnabled="False" ToolTip="Pantalla pendiente">
+                    <Button Command="{Binding NavigateHomeCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsHomeActive}" Value="True">
+                                        <Setter Property="Tag" Value="Active" />
+                                        <Setter Property="Foreground" Value="{DynamicResource SidebarActiveTextBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource IconHome}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource SidebarTextBrush}" Margin="0,0,20,0" />
+                            <Path Data="{StaticResource IconHome}" Margin="0,0,20,0">
+                                <Path.Style>
+                                    <Style TargetType="Path" BasedOn="{StaticResource IconStyle}">
+                                        <Setter Property="Stroke" Value="{DynamicResource SidebarTextBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsHomeActive}" Value="True">
+                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
                             <StackPanel>
-                                <TextBlock Text="Inicio" Style="{StaticResource NavTitle}" />
-                                <TextBlock Text="Resumen del sistema" Style="{StaticResource NavSubtitle}" />
+                                <TextBlock Text="Inicio" Style="{StaticResource NavTitle}" FontWeight="SemiBold" />
+                                <TextBlock Text="Resumen del sistema" Style="{StaticResource NavSubtitle}"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Opacity="0.75" />
                             </StackPanel>
                         </StackPanel>
                     </Button>
@@ -83,7 +105,18 @@
                             </Style>
                         </Button.Style>
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource IconPulse}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource AccentBrush}" Margin="0,0,20,0" />
+                            <Path Data="{StaticResource IconPulse}" Margin="0,0,20,0">
+                                <Path.Style>
+                                    <Style TargetType="Path" BasedOn="{StaticResource IconStyle}">
+                                        <Setter Property="Stroke" Value="{DynamicResource SidebarTextBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsCaptureTrainingActive}" Value="True">
+                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
                             <StackPanel>
                                 <TextBlock Text="Capturar y entrenar" Style="{StaticResource NavTitle}" FontWeight="SemiBold" />
                                 <TextBlock Text="Graba y enseña al modelo" FontSize="13.5"
@@ -92,24 +125,68 @@
                         </StackPanel>
                     </Button>
 
-                    <Button Style="{StaticResource NavButtonStyle}" IsEnabled="False" ToolTip="Pantalla pendiente">
+                    <Button Command="{Binding NavigateRealtimeCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRealtimeActive}" Value="True">
+                                        <Setter Property="Tag" Value="Active" />
+                                        <Setter Property="Foreground" Value="{DynamicResource SidebarActiveTextBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource IconPlay}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource SidebarTextBrush}" Margin="0,0,20,0" />
+                            <Path Data="{StaticResource IconPlay}" Margin="0,0,20,0">
+                                <Path.Style>
+                                    <Style TargetType="Path" BasedOn="{StaticResource IconStyle}">
+                                        <Setter Property="Stroke" Value="{DynamicResource SidebarTextBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRealtimeActive}" Value="True">
+                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
                             <StackPanel>
-                                <TextBlock Text="Tiempo real" Style="{StaticResource NavTitle}" />
-                                <TextBlock Text="Controla el robot UGOT" Style="{StaticResource NavSubtitle}" />
+                                <TextBlock Text="Tiempo real" Style="{StaticResource NavTitle}" FontWeight="SemiBold" />
+                                <TextBlock Text="Controla el robot UGOT" Style="{StaticResource NavSubtitle}"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Opacity="0.75" />
                             </StackPanel>
                         </StackPanel>
                     </Button>
 
                     <TextBlock Text="SISTEMA" Style="{StaticResource SidebarSection}" />
 
-                    <Button Style="{StaticResource NavButtonStyle}" IsEnabled="False" ToolTip="Pantalla pendiente">
+                    <Button Command="{Binding NavigateDatabaseCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDatabaseActive}" Value="True">
+                                        <Setter Property="Tag" Value="Active" />
+                                        <Setter Property="Foreground" Value="{DynamicResource SidebarActiveTextBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource IconList}" Style="{StaticResource IconStyle}" Stroke="{DynamicResource SidebarTextBrush}" Margin="0,0,20,0" />
+                            <Path Data="{StaticResource IconList}" Margin="0,0,20,0">
+                                <Path.Style>
+                                    <Style TargetType="Path" BasedOn="{StaticResource IconStyle}">
+                                        <Setter Property="Stroke" Value="{DynamicResource SidebarTextBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDatabaseActive}" Value="True">
+                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
                             <StackPanel>
-                                <TextBlock Text="Base de datos" Style="{StaticResource NavTitle}" />
-                                <TextBlock Text="{Binding Status.RecordingCountText}" Style="{StaticResource NavSubtitle}" />
+                                <TextBlock Text="Base de datos" Style="{StaticResource NavTitle}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Status.RecordingCountText}" Style="{StaticResource NavSubtitle}"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Opacity="0.75" />
                             </StackPanel>
                         </StackPanel>
                     </Button>
