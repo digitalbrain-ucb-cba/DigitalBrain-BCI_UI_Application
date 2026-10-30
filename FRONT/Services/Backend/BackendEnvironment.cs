@@ -19,7 +19,8 @@ public sealed class BackendEnvironment : IBackendEnvironment
     public string PythonExecutable { get; }
     public string DataRoot => Path.Combine(BackendRoot, "datos");
     public string DatasetsDirectory => Path.Combine(BackendRoot, "artifacts", "datasets");
-    public string ModelPath => Path.Combine(BackendRoot, "artifacts", "models", "ModelMotores.pkl");
+    public string ModelsDirectory => Path.Combine(BackendRoot, "artifacts", "models");
+    public string ModelPath => Path.Combine(ModelsDirectory, "ModelMotores.pkl");
 
     public string Resolve(string path)
     {

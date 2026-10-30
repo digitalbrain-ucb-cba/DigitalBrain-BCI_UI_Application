@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DigitalBrain.UI.Models;
@@ -117,12 +118,21 @@ public partial class HomeViewModel : BaseViewModel
                 ? $"{count} grabaciones · {movementsCount} movimientos"
                 : "Sin grabaciones registradas";
 
-            HasTrainedModel = File.Exists(_environment.ModelPath);
-            Status.IsModelReady = HasTrainedModel;
-            Status.ModelDetail = HasTrainedModel ? Path.GetFileName(_environment.ModelPath) : "sin entrenar";
+            var latestModel = Directory.Exists(_environment.ModelsDirectory)
+                ? Directory.EnumerateFiles(_environment.ModelsDirectory, "*.pkl")
+                    .Select(f => new FileInfo(f))
+                    .OrderByDescending(f => f.LastWriteTimeUtc)
+                    .FirstOrDefault()
+                : null;
 
-            ModelStatusText = HasTrainedModel ? Path.GetFileName(_environment.ModelPath) : "Sin entrenar";
-            ModelStatusDetail = HasTrainedModel ? "Random Forest · 16 feat" : "Pendiente de entrenamiento";
+            HasTrainedModel = latestModel is not null || File.Exists(_environment.ModelPath);
+            var activeModelName = latestModel?.Name ?? (File.Exists(_environment.ModelPath) ? Path.GetFileName(_environment.ModelPath) : null);
+
+            Status.IsModelReady = HasTrainedModel;
+            Status.ModelDetail = activeModelName ?? "sin entrenar";
+
+            ModelStatusText = activeModelName ?? "Sin entrenar";
+            ModelStatusDetail = HasTrainedModel ? $"{activeModelName} · 16 feat" : "Pendiente de entrenamiento";
         }
         catch
         {

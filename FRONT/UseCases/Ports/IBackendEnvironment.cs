@@ -7,6 +7,7 @@ public interface IBackendEnvironment
     string PythonExecutable { get; }
     string DataRoot { get; }
     string DatasetsDirectory { get; }
+    string ModelsDirectory { get; }
     string ModelPath { get; }
     /// <summary>Resuelve una ruta relativa a <c>BACK/</c>; deja intactas las absolutas.</summary>
     string Resolve(string path);

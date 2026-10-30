@@ -136,8 +136,27 @@
                 <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="28,24" VerticalAlignment="Top">
                     <StackPanel>
                         <TextBlock Text="Modelo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,16" />
-                        <UniformGrid Columns="2">
-                            <Border Style="{StaticResource TileStyle}" Margin="0,0,5,10">
+
+                        <!-- Configuración del modelo a entrenar -->
+                        <TextBlock Text="PERSONA / SUJETO" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,6" />
+                        <TextBox Style="{StaticResource InputStyle}"
+                                 Text="{Binding PersonName, UpdateSourceTrigger=PropertyChanged}"
+                                 Tag="Nombre o ID de la persona"
+                                 IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}"
+                                 Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding PersonNameWarning}" Style="{StaticResource WarningTextStyle}" Margin="0,0,0,10" />
+
+                        <TextBlock Text="ALGORITMO" Style="{StaticResource FieldLabelStyle}" Margin="0,4,0,6" />
+                        <ComboBox Style="{StaticResource ComboStyle}"
+                                  ItemsSource="{Binding AvailableAlgorithms}"
+                                  SelectedItem="{Binding SelectedAlgorithm}"
+                                  DisplayMemberPath="DisplayName"
+                                  IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}"
+                                  Margin="0,0,0,18" />
+
+                        <!-- Fichas de estado y métricas -->
+                        <UniformGrid Columns="2" Margin="0,0,0,10">
+                            <Border Style="{StaticResource TileStyle}" Margin="0,0,5,0">
                                 <StackPanel>
                                     <TextBlock Text="ESTADO" Style="{StaticResource TileLabelStyle}" />
                                     <TextBlock>
@@ -145,6 +164,9 @@
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource TileValueStyle}">
                                                 <Setter Property="Text" Value="Sin entrenar" />
                                                 <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsModelTrained}" Value="True">
+                                                        <Setter Property="Text" Value="Listo" />
+                                                    </DataTrigger>
                                                     <DataTrigger Binding="{Binding Status.IsModelReady}" Value="True">
                                                         <Setter Property="Text" Value="Listo" />
                                                     </DataTrigger>
@@ -154,29 +176,26 @@
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource TileStyle}" Margin="5,0,0,10">
+                            <Border Style="{StaticResource TileStyle}" Margin="5,0,0,0">
                                 <StackPanel>
                                     <TextBlock Text="EXACTITUD" Style="{StaticResource TileLabelStyle}" />
                                     <TextBlock Text="{Binding AccuracyText}" Style="{StaticResource TileValueStyle}" />
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource TileStyle}" Margin="0,0,5,0">
-                                <StackPanel>
-                                    <TextBlock Text="ALGORITMO" Style="{StaticResource TileLabelStyle}" />
-                                    <TextBlock Text="{Binding AlgorithmText}" Style="{StaticResource TileValueStyle}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource TileStyle}" Margin="5,0,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="ARCHIVO" Style="{StaticResource TileLabelStyle}" />
-                                    <TextBlock Text="{Binding ModelFileName}" Style="{StaticResource TileValueStyle}" FontSize="15"
-                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ModelFileName}" />
-                                </StackPanel>
-                            </Border>
                         </UniformGrid>
 
+                        <Border Style="{StaticResource TileStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ARCHIVO DESTINO (.PKL)" Style="{StaticResource TileLabelStyle}" />
+                                <TextBlock Text="{Binding TargetModelFileName}" Style="{StaticResource TileValueStyle}" FontSize="15"
+                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding TargetModelFileName}" />
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock Text="{Binding TrainedClassesText}" Style="{StaticResource HintTextStyle}" Margin="0,14,0,0" />
-                        <TextBlock Style="{StaticResource HintTextStyle}" Margin="0,14,0,0"
+                        <TextBlock Style="{StaticResource HintTextStyle}" Margin="0,10,0,0"
+                                   Text="El modelo se guardará en BACK/artifacts/models/ con el nombre de la persona y el algoritmo para su uso en tiempo real." />
+                        <TextBlock Style="{StaticResource HintTextStyle}"
                                    Text="«Todos los sujetos» usa las carpetas de cada sujeto y también las grabaciones anteriores que no tienen sujeto." />
                         <TextBlock Style="{StaticResource HintTextStyle}"
                                    Text="La exactitud sale de una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto." />

@@ -21,7 +21,8 @@ public sealed class TrainModelUseCase(
     public async Task<TrainModelResult> ExecuteAsync(
         IReadOnlyList<TrainingSelection> selections,
         IProgress<string>? progress = null,
-        string algorithm = DefaultAlgorithm)
+        string algorithm = DefaultAlgorithm,
+        string? outputModelPath = null)
     {
         if (selections.Select(s => s.Movement.Label).Distinct().Count() < 2)
             return TrainModelResult.Failure("Elige al menos dos movimientos para entrenar.");
@@ -62,8 +63,12 @@ public sealed class TrainModelUseCase(
             }
         }
 
+        var targetPath = string.IsNullOrWhiteSpace(outputModelPath)
+            ? environment.ModelPath
+            : outputModelPath;
+
         progress?.Report("Entrenando modelo…");
-        var result = await backend.TrainModelAsync(environment.ModelPath, datasets, algorithm, progress);
+        var result = await backend.TrainModelAsync(targetPath, datasets, algorithm, progress);
         return result is null
             ? TrainModelResult.Failure(backend.LastError is { } error
                 ? $"El entrenamiento falló: {error}"
