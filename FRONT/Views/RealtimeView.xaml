@@ -1,0 +1,52 @@
+<UserControl x:Class="DigitalBrain.UI.Views.RealtimeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:DigitalBrain.UI.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:RealtimeViewModel}"
+             d:DesignWidth="1200" d:DesignHeight="800">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="40,36,40,36" MaxWidth="1100" HorizontalAlignment="Left">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Encabezado -->
+            <StackPanel>
+                <TextBlock Text="PASO 3 · INFERENCIA Y CONTROL ROBÓTICO" Style="{StaticResource SectionLabelStyle}" />
+                <TextBlock Text="Tiempo real" FontFamily="{StaticResource DisplayFont}" FontSize="36" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,4" />
+                <TextBlock Text="Clasificación en vivo de bioseñales EEG y transmisión de comandos hacia el robot UGOT." FontSize="18"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+            </StackPanel>
+
+            <!-- Tarjeta de estado de pantalla en desarrollo -->
+            <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,28,0,0" Padding="32,28">
+                <StackPanel>
+                    <DockPanel LastChildFill="False" Margin="0,0,0,16">
+                        <Border Background="{DynamicResource TileBackgroundBrush}" CornerRadius="12" Padding="12,6">
+                            <TextBlock Text="Módulo en desarrollo" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" FontSize="14" />
+                        </Border>
+                    </DockPanel>
+
+                    <TextBlock Text="Control del Robot UGOT en Vivo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,8" />
+                    <TextBlock Text="Esta pantalla conectará el flujo de adquisición del casco en vivo con RealtimeClassifier en Python. Las ventanas de 125 muestras procesadas cada 63 pasos (0,5 s) generarán predicciones continuas para traducir la intención motora (brazo derecho, pierna izquierda, reposo) en instrucciones de movimiento por Wi-Fi hacia el robot UGOT."
+                               FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="24" MaxWidth="800" Margin="0,0,0,24" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding NavigateCaptureCommand}" Margin="0,0,14,0">
+                            <TextBlock Text="Ir a Capturar" />
+                        </Button>
+                        <Button Style="{StaticResource OutlineButtonStyle}" Command="{Binding NavigateHomeCommand}">
+                            <TextBlock Text="Volver al Inicio" />
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

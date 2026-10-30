@@ -49,9 +49,12 @@ public partial class App : Application
 
         // ViewModels y Ventana Principal
         services.AddSingleton<SystemStatusViewModel>();
+        services.AddSingleton<HomeViewModel>();
         // Singletons: una captura sigue en curso aunque se cambie de pestaña.
         services.AddSingleton<CaptureViewModel>();
         services.AddSingleton<TrainingViewModel>();
+        services.AddSingleton<DatabaseViewModel>();
+        services.AddSingleton<RealtimeViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 
@@ -61,11 +64,18 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        var settingsStore = _serviceProvider.GetRequiredService<ISettingsStore>();
+        var userSettings = settingsStore.Load();
+        if (userSettings.SampleRateHz > 0)
+        {
+            DigitalBrain.UI.Models.AcquisitionParameters.SampleRateHz = userSettings.SampleRateHz;
+        }
+
         var themeService = _serviceProvider.GetRequiredService<IThemeService>();
         themeService.Apply(themeService.Current);
 
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-        _serviceProvider.GetRequiredService<INavigationService>().NavigateTo<CaptureViewModel>();
+        _serviceProvider.GetRequiredService<INavigationService>().NavigateTo<HomeViewModel>();
         mainWindow.Show();
     }
 }

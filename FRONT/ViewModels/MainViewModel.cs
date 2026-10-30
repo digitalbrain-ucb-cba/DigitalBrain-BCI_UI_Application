@@ -35,22 +35,37 @@ public partial class MainViewModel : BaseViewModel
 
     public SystemStatusViewModel Status { get; }
 
+    public bool IsHomeActive => CurrentView is HomeViewModel;
     public bool IsCaptureActive => CurrentView is CaptureViewModel;
     public bool IsTrainingActive => CurrentView is TrainingViewModel;
+    public bool IsRealtimeActive => CurrentView is RealtimeViewModel;
+    public bool IsDatabaseActive => CurrentView is DatabaseViewModel;
 
     partial void OnCurrentViewChanged(BaseViewModel? value)
     {
+        OnPropertyChanged(nameof(IsHomeActive));
         OnPropertyChanged(nameof(IsCaptureActive));
         OnPropertyChanged(nameof(IsTrainingActive));
+        OnPropertyChanged(nameof(IsRealtimeActive));
+        OnPropertyChanged(nameof(IsDatabaseActive));
     }
 
     partial void OnIsDarkThemeChanged(bool value) => _themeService.Apply(value ? AppTheme.Dark : AppTheme.Light);
+
+    [RelayCommand]
+    private void NavigateHome() => _navigationService.NavigateTo<HomeViewModel>();
 
     [RelayCommand]
     private void NavigateCapture() => _navigationService.NavigateTo<CaptureViewModel>();
 
     [RelayCommand]
     private void NavigateTraining() => _navigationService.NavigateTo<TrainingViewModel>();
+
+    [RelayCommand]
+    private void NavigateRealtime() => _navigationService.NavigateTo<RealtimeViewModel>();
+
+    [RelayCommand]
+    private void NavigateDatabase() => _navigationService.NavigateTo<DatabaseViewModel>();
 
     [RelayCommand]
     private void UseLightTheme() => IsDarkTheme = false;

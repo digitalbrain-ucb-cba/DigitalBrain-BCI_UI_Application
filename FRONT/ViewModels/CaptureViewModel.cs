@@ -19,7 +19,7 @@ namespace DigitalBrain.UI.ViewModels;
 /// </summary>
 public partial class CaptureViewModel : BaseViewModel
 {
-    private const int VisibleSamples = 500; // 4 s a 125 Hz
+    private int VisibleSamples => (int)Math.Round(AcquisitionParameters.SampleRateHz * 4.0); // 4 s a la frecuencia configurada
     private const int RecentCount = 4;
     private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-ES");
 
@@ -73,6 +73,14 @@ public partial class CaptureViewModel : BaseViewModel
         ReloadMovements();
         UpdateRecordingCounters(CaptureSnapshot.Empty, TimeSpan.Zero);
         UpdateDurationTexts();
+        AcquisitionParameters.SampleRateChanged += () =>
+        {
+            OnPropertyChanged(nameof(FrequencyText));
+            OnPropertyChanged(nameof(WindowText));
+            OnPropertyChanged(nameof(StepText));
+            OnPropertyChanged(nameof(OverlapText));
+            _ = LoadAsync();
+        };
         _ = LoadAsync();
     }
 
@@ -110,10 +118,10 @@ public partial class CaptureViewModel : BaseViewModel
             : "—";
 
     // ---- Parámetros avanzados (solo lectura, valores del backend) ----
-    public string FrequencyText { get; } = $"{AcquisitionParameters.SampleRateHz:0} Hz";
-    public string WindowText { get; } = $"{AcquisitionParameters.WindowSize} muestras · {(AcquisitionParameters.WindowSize / AcquisitionParameters.SampleRateHz).ToString("0.#", Es)} s";
-    public string StepText { get; } = $"{AcquisitionParameters.WindowStep} muestras · {(AcquisitionParameters.WindowStep / AcquisitionParameters.SampleRateHz).ToString("0.0", Es)} s";
-    public string OverlapText { get; } = $"{(AcquisitionParameters.OverlapRatio * 100).ToString("0", Es)} %";
+    public string FrequencyText => $"{AcquisitionParameters.SampleRateHz:0} Hz";
+    public string WindowText => $"{AcquisitionParameters.WindowSize} muestras · {(AcquisitionParameters.WindowSize / AcquisitionParameters.SampleRateHz).ToString("0.#", Es)} s";
+    public string StepText => $"{AcquisitionParameters.WindowStep} muestras · {(AcquisitionParameters.WindowStep / AcquisitionParameters.SampleRateHz).ToString("0.0", Es)} s";
+    public string OverlapText => $"{(AcquisitionParameters.OverlapRatio * 100).ToString("0", Es)} %";
     public string SaturationText { get; } = $"±{AcquisitionParameters.SaturationMicroVolts:0} µV";
     public string ChannelsText { get; } = string.Join(", ", AcquisitionParameters.ChannelNames);
 
