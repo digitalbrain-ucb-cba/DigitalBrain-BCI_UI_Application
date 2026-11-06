@@ -57,6 +57,9 @@ public partial class TrainingViewModel : BaseViewModel
     [ObservableProperty] private string _modelName = "";
     [ObservableProperty] private string _suggestedModelName = "";
     [ObservableProperty] private string _modelNameWarning = "";
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(EditModelNameText))] private bool _isEditingModelName;
+
+    public string EditModelNameText => IsEditingModelName ? "Listo" : "Editar";
 
     public override void OnNavigatedTo()
     {
@@ -79,6 +82,15 @@ public partial class TrainingViewModel : BaseViewModel
     {
         if (e.PropertyName == nameof(SystemStatusViewModel.IsCapturing))
             TrainModelCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand]
+    private void ToggleEditModelName()
+    {
+        // Dejarlo vacío devuelve el nombre automático.
+        if (IsEditingModelName && string.IsNullOrWhiteSpace(ModelName))
+            ModelName = SuggestedModelName;
+        IsEditingModelName = !IsEditingModelName;
     }
 
     [RelayCommand]
@@ -179,7 +191,7 @@ public partial class TrainingViewModel : BaseViewModel
         {
             0 => "modelo",
             1 => subjects[0] ?? "todos",
-            _ => "varios",
+            _ => subjects.Select(ModelType.Of).Distinct().ToList() is [{ } type] ? $"{type.Prefix}_varios" : "varios",
         };
         SuggestedModelName = $"{subject}_{SelectedAlgorithm.Id}";
         if (!_isModelNameCustom) ModelName = SuggestedModelName;

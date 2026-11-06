@@ -4,6 +4,7 @@ using DigitalBrain.UI.Services.Hardware;
 using DigitalBrain.UI.Services.Backend;
 using DigitalBrain.UI.Services.Dialogs;
 using DigitalBrain.UI.Services.Navigation;
+using DigitalBrain.UI.Services.Shell;
 using DigitalBrain.UI.Services.Signal;
 using DigitalBrain.UI.Services.Storage;
 using DigitalBrain.UI.Services.Theme;
@@ -78,6 +79,9 @@ public partial class App : Application
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         _serviceProvider.GetRequiredService<INavigationService>().NavigateTo<HomeViewModel>();
         mainWindow.Show();
+
+        var backendRoot = _serviceProvider.GetRequiredService<IBackendEnvironment>().BackendRoot;
+        _ = Task.Run(() => DesktopShortcut.Ensure(backendRoot));
     }
 
     protected override void OnExit(ExitEventArgs e)

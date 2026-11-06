@@ -71,8 +71,9 @@ def main() -> None:
             predict_command.error(str(error))
         try:
             samples = ExecutableCapture(executable_path).stream_samples(lambda message: print(message, flush=True))
-            for label in classifier.predict_windows(samples):
-                print(f"Predicción: {label}", flush=True)
+            for label, confidence in classifier.predict_windows(samples):
+                detail = "" if confidence is None else f" | confianza: {confidence:.1%}"
+                print(f"Predicción: {label}{detail}", flush=True)
         except KeyboardInterrupt:
             print("Predicción detenida.")
         except RuntimeError as error:

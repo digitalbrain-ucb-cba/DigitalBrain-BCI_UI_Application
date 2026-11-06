@@ -1,21 +1,24 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using DigitalBrain.UI.UseCases.Ports;
 
 namespace DigitalBrain.UI.Services.Backend;
 
 /// <summary>
 /// Predicción a través del backend: ejecuta <c>python -m digital_brain.cli predict</c>, que lanza el capturador
-/// y escribe una línea <c>Predicción: etiqueta</c> por ventana. No termina sola: al cancelar se cierra Python
+/// y escribe una línea <c>Predicción: etiqueta | confianza: 87.0%</c> por ventana. No termina sola: al cancelar se cierra Python
 /// junto con el capturador.
 /// </summary>
-public sealed class PythonCliRealtimeGateway(IBackendEnvironment environment) : IRealtimeGateway
+public sealed partial class PythonCliRealtimeGateway(IBackendEnvironment environment) : IRealtimeGateway
 {
-    private const string PredictionPrefix = "Predicción:";
+    [GeneratedRegex(@"^Predicción:\s*(?<label>.+?)(?:\s+\|\s+confianza:\s*(?<confidence>[0-9.]+)%)?\s*$")]
+    private static partial Regex PredictionRegex();
 
     public async Task<RealtimeOutcome> RunAsync(
         RealtimeRequest request,
-        Action<string> onPrediction,
+        Action<RealtimePrediction> onPrediction,
         Action<string> onLog,
         CancellationToken cancellationToken)
     {
@@ -63,8 +66,8 @@ public sealed class PythonCliRealtimeGateway(IBackendEnvironment environment) : 
 
         while (await process.StandardOutput.ReadLineAsync() is { } line)
         {
-            if (line.StartsWith(PredictionPrefix, StringComparison.Ordinal))
-                onPrediction(line[PredictionPrefix.Length..].Trim());
+            if (PredictionRegex().Match(line) is { Success: true } match)
+                onPrediction(ToPrediction(match));
             else if (!string.IsNullOrWhiteSpace(line))
                 onLog(line.Trim());
         }
@@ -78,5 +81,13 @@ public sealed class PythonCliRealtimeGateway(IBackendEnvironment environment) : 
         return RealtimeOutcome.Failed(string.IsNullOrEmpty(error)
             ? $"La predicción terminó con código {process.ExitCode}."
             : PythonCliCaptureGateway.LastLines(error, 3));
+    }
+
+    private static RealtimePrediction ToPrediction(Match match)
+    {
+        var confidence = match.Groups["confidence"];
+        return new RealtimePrediction(
+            match.Groups["label"].Value,
+            confidence.Success ? double.Parse(confidence.Value, CultureInfo.InvariantCulture) / 100 : null);
     }
 }

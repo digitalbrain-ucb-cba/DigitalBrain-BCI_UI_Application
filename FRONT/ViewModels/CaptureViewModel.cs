@@ -86,12 +86,14 @@ public partial class CaptureViewModel : BaseViewModel
 
     public SystemStatusViewModel Status { get; }
     public ObservableCollection<MovementClass> Movements { get; } = [];
+    public IReadOnlyList<ModelType> ModelTypes => ModelType.All;
     public ObservableCollection<string> Subjects { get; } = [];
     public IReadOnlyList<ChannelViewModel> Channels { get; }
     public ObservableCollection<RecordingItemViewModel> RecentRecordings { get; } = [];
 
     // ---- Configuración de sesión ----
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(FileNamePreview))] private MovementClass? _selectedMovement;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(NewSubjectPreview))] private ModelType _selectedModelType = ModelType.All[0];
     [ObservableProperty] private string? _selectedSubject;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(FileNamePreview))] private string _sessionNumberText = "1";
     [ObservableProperty] private string _durationText = "25";
@@ -105,11 +107,14 @@ public partial class CaptureViewModel : BaseViewModel
     [ObservableProperty] private string _newMovementName = "";
     [ObservableProperty] private string _movementWarning = "";
     [ObservableProperty] private bool _isAddingSubject;
-    [ObservableProperty] private string _newSubjectName = "";
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(NewSubjectPreview))] private string _newSubjectName = "";
     [ObservableProperty] private string _subjectWarning = "";
 
     public bool HasSubjects => Subjects.Count > 0;
     public bool ShowNoSubjectsHint => !HasSubjects && !IsAddingSubject;
+    public string NewSubjectPreview => SelectedModelType.Apply(NewSubjectName) is { Length: > 0 } name
+        ? $"Se guardará como {name}."
+        : $"Se guardará con el prefijo {SelectedModelType.Prefix}.";
     public string DiscardedSecondsText { get; } = $"{AcquisitionParameters.DefaultCaptureFromSeconds:0} s";
 
     public string FileNamePreview =>
@@ -147,6 +152,12 @@ public partial class CaptureViewModel : BaseViewModel
     {
         CancelAddMovement();
         CancelAddSubject();
+        ReloadSubjects(keep: SelectedSubject);
+    }
+
+    partial void OnSelectedModelTypeChanged(ModelType value)
+    {
+        SubjectWarning = "";
         ReloadSubjects(keep: SelectedSubject);
     }
 
@@ -228,7 +239,7 @@ public partial class CaptureViewModel : BaseViewModel
     private void ConfirmAddSubject()
     {
         if (SelectedMovement is null) return;
-        var result = _catalog.AddSubject(SelectedMovement, NewSubjectName);
+        var result = _catalog.AddSubject(SelectedMovement, SelectedModelType.Apply(NewSubjectName));
         if (!result.Succeeded)
         {
             SubjectWarning = result.AlreadyExists
@@ -455,7 +466,8 @@ public partial class CaptureViewModel : BaseViewModel
         {
             try
             {
-                foreach (var subject in _catalog.GetSubjects(SelectedMovement))
+                // Solo los de este tipo: una captura nueva nunca debe caer en una carpeta sin prefijo.
+                foreach (var subject in _catalog.GetSubjects(SelectedMovement).Where(s => ModelType.Of(s) == SelectedModelType))
                     Subjects.Add(subject);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

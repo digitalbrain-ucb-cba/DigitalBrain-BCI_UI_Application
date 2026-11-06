@@ -3,8 +3,16 @@
 from collections.abc import Iterator
 from pathlib import Path
 import pickle
+from typing import NamedTuple
 import pandas as pd
 from digital_brain.domain.signal_features import FEATURE_COLUMNS, SCRIPT_FEATURE_COLUMNS, SpectralFeatureExtractor
+
+
+class Prediction(NamedTuple):
+    """Decisión de una ventana. ``confidence`` es la probabilidad que el modelo da a su etiqueta, no una exactitud medida."""
+
+    label: object
+    confidence: float | None
 
 
 class RealtimeClassifier:
@@ -20,7 +28,7 @@ class RealtimeClassifier:
         if unknown:
             raise ValueError(f"El modelo usa columnas desconocidas: {unknown}")
 
-    def predict_windows(self, samples: Iterator[tuple[float, float, float, float]], step_size: int | None = None) -> Iterator[object]:
+    def predict_windows(self, samples: Iterator[tuple[float, float, float, float]], step_size: int | None = None) -> Iterator[Prediction]:
         step_size = step_size or self._extractor.default_step
         buffer: list[tuple[float, float, float, float]] = []
         for sample in samples:
@@ -30,5 +38,13 @@ class RealtimeClassifier:
             channels = [list(channel) for channel in zip(*buffer)]
             features = self._extractor.extract(channels)
             row = [features[SCRIPT_FEATURE_COLUMNS.get(name, name)] for name in self._columns]
-            yield self._model.predict(pd.DataFrame([row], columns=self._columns))[0]
+            yield self._predict(pd.DataFrame([row], columns=self._columns))
             del buffer[:step_size]
+
+    def _predict(self, row: pd.DataFrame) -> Prediction:
+        label = self._model.predict(row)[0]
+        if not hasattr(self._model, "predict_proba"):
+            return Prediction(label, None)
+        # Se busca la clase de predict: en SVM, predict y predict_proba pueden no coincidir en la más probable.
+        probabilities = dict(zip(self._model.classes_, self._model.predict_proba(row)[0]))
+        return Prediction(label, float(probabilities[label]))

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DigitalBrain.UI.Models;
 using DigitalBrain.UI.Services.Dialogs;
 using DigitalBrain.UI.Services.Navigation;
 using DigitalBrain.UI.UseCases.Ports;
@@ -18,13 +19,20 @@ public sealed record ModelOption(string FilePath)
     public override string ToString() => Name;
 }
 
+/// <summary>Fila del historial de predicciones.</summary>
+public sealed record PredictionItem(string NumberText, string Name, string AccentHex, string ConfidenceText);
+
 /// <summary>
-/// Pantalla «Tiempo real» (paso 3): lanza el capturador con el modelo elegido y muestra la clase de cada ventana.
+/// Pantalla «Tiempo real» (paso 3): lanza el capturador con el modelo elegido y muestra la clase de las últimas
+/// ventanas con la confianza del modelo en cada una. En vivo no se conoce el movimiento real, así que esa confianza
+/// es lo único que se puede mostrar: no es una exactitud medida.
 /// El envío de comandos al robot UGOT todavía no está conectado.
 /// </summary>
 public partial class RealtimeViewModel : BaseViewModel
 {
     private const string NoPrediction = "—";
+    private const string UnknownAccentHex = "#8A8A8A";
+    private const int HistorySize = 20;
     private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-ES");
 
     private readonly INavigationService _navigationService;
@@ -35,7 +43,7 @@ public partial class RealtimeViewModel : BaseViewModel
     private readonly IDialogService _dialogs;
     private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
     private CancellationTokenSource? _predictionCts;
-    private Dictionary<string, string> _displayNames = [];
+    private Dictionary<string, MovementClass> _movements = [];
     private int _predictionCount;
 
     public RealtimeViewModel(
@@ -60,11 +68,14 @@ public partial class RealtimeViewModel : BaseViewModel
 
     public SystemStatusViewModel Status { get; }
     public ObservableCollection<ModelOption> Models { get; } = [];
+    /// <summary>Últimas predicciones, la más reciente primero.</summary>
+    public ObservableCollection<PredictionItem> RecentPredictions { get; } = [];
 
     [ObservableProperty] private string _executablePath = "";
     [ObservableProperty] private ModelOption? _selectedModel;
     [ObservableProperty] private bool _isPredicting;
     [ObservableProperty] private string _currentPrediction = NoPrediction;
+    [ObservableProperty] private string _currentConfidence = NoPrediction;
     [ObservableProperty] private string _predictionCountText = "0";
     [ObservableProperty] private string _deviceStatus = "";
     [ObservableProperty] private string _message = "";
@@ -125,7 +136,7 @@ public partial class RealtimeViewModel : BaseViewModel
         ExecutablePath = _settings.Load().CaptureExecutablePath;
         if (!File.Exists(ExecutablePath))
         {
-            ShowMessage($"No se encontró el capturador en {ExecutablePath}. Cambia la ruta en la pantalla Capturar si en este equipo está en otro lugar.", isError: true);
+            ShowMessage("No se encontró el capturador en este equipo. Su ruta se configura en la pantalla Capturar.", isError: true);
             return;
         }
         if (SelectedModel is not { } model || !File.Exists(model.FilePath))
@@ -134,12 +145,14 @@ public partial class RealtimeViewModel : BaseViewModel
             return;
         }
 
-        _displayNames = _catalog.GetMovements().ToDictionary(m => m.Label, m => m.DisplayName);
+        _movements = _catalog.GetMovements().ToDictionary(m => m.Label);
         _predictionCount = 0;
         PredictionCountText = "0";
         CurrentPrediction = NoPrediction;
+        CurrentConfidence = NoPrediction;
+        RecentPredictions.Clear();
         DeviceStatus = "";
-        ShowMessage($"Iniciando {Path.GetFileName(ExecutablePath)}; la primera decisión llega tras 1 s de señal válida.");
+        ShowMessage("Iniciando; la primera decisión llega tras 1 s de señal válida.");
         _predictionCts = new CancellationTokenSource();
         IsPredicting = true;
 
@@ -170,12 +183,20 @@ public partial class RealtimeViewModel : BaseViewModel
     /// <summary>Detiene la predicción en curso, si hay una; también se llama al cerrar la aplicación.</summary>
     public void Stop() => _predictionCts?.Cancel();
 
-    private void OnPrediction(string label) => _dispatcher.InvokeAsync(() =>
+    private void OnPrediction(RealtimePrediction prediction) => _dispatcher.InvokeAsync(() =>
     {
         Status.IsHeadsetStreaming = IsPredicting;
         _predictionCount++;
         PredictionCountText = _predictionCount.ToString("N0", Es);
-        CurrentPrediction = _displayNames.GetValueOrDefault(label, label);
+
+        var movement = _movements.GetValueOrDefault(prediction.Label);
+        CurrentPrediction = movement?.DisplayName ?? prediction.Label;
+        CurrentConfidence = prediction.Confidence?.ToString("P0", Es) ?? NoPrediction;
+
+        RecentPredictions.Insert(0, new PredictionItem(
+            $"#{PredictionCountText}", CurrentPrediction, movement?.AccentHex ?? UnknownAccentHex, CurrentConfidence));
+        if (RecentPredictions.Count > HistorySize)
+            RecentPredictions.RemoveAt(HistorySize);
     });
 
     private void OnDeviceLog(string line) => _dispatcher.InvokeAsync(() => DeviceStatus = line);

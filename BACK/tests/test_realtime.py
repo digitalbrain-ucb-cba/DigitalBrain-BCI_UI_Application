@@ -14,7 +14,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 from digital_brain import cli
 from digital_brain.application.dataset import build_dataset
-from digital_brain.application.realtime import RealtimeClassifier
+from digital_brain.application.realtime import Prediction, RealtimeClassifier
 from digital_brain.application.training import train_classifier
 from digital_brain.domain.signal_features import FEATURE_COLUMNS, SCRIPT_FEATURE_COLUMNS, SpectralFeatureExtractor
 from digital_brain.infrastructure.capture import ExecutableCapture
@@ -86,7 +86,7 @@ class ScriptParityTests(unittest.TestCase):
 
 
 class RealtimeClassifierTests(unittest.TestCase):
-    def classify(self, columns: tuple[str, ...], samples: list[tuple[float, float, float, float]]) -> list[object]:
+    def classify(self, columns: tuple[str, ...], samples: list[tuple[float, float, float, float]]) -> list[Prediction]:
         with tempfile.TemporaryDirectory() as temporary_directory:
             model_path = Path(temporary_directory) / "model.pkl"
             save_model(model_path, columns)
@@ -97,8 +97,43 @@ class RealtimeClassifierTests(unittest.TestCase):
         samples = signal(6, 125) + signal(20, 251)
         project = self.classify(FEATURE_COLUMNS, samples)
         self.assertEqual(project, self.classify(SCRIPT_COLUMNS, samples))
-        self.assertEqual(project[0], "lento")
-        self.assertEqual(project[-1], "rapido")
+        self.assertEqual(project[0].label, "lento")
+        self.assertEqual(project[-1].label, "rapido")
+
+    def test_confidence_is_the_probability_of_the_predicted_class(self) -> None:
+        for prediction in self.classify(FEATURE_COLUMNS, signal(6, 125) + signal(20, 251)):
+            self.assertGreaterEqual(prediction.confidence, 0.5)
+            self.assertLessEqual(prediction.confidence, 1.0)
+
+    def test_confidence_belongs_to_the_label_even_if_another_class_is_more_likely(self) -> None:
+        class Disagrees:
+            classes_ = np.array(["a", "b"])
+            feature_names_in_ = np.array(FEATURE_COLUMNS)
+
+            def predict(self, _row: pd.DataFrame) -> np.ndarray:
+                return np.array(["a"])
+
+            def predict_proba(self, _row: pd.DataFrame) -> np.ndarray:
+                return np.array([[0.4, 0.6]])
+
+        self.assertEqual(self.classify_with(Disagrees()), [Prediction("a", 0.4)])
+
+    def test_model_without_probabilities_still_predicts(self) -> None:
+        class OnlyPredict:
+            feature_names_in_ = np.array(FEATURE_COLUMNS)
+
+            def predict(self, _row: pd.DataFrame) -> np.ndarray:
+                return np.array(["a"])
+
+        self.assertEqual(self.classify_with(OnlyPredict()), [Prediction("a", None)])
+
+    def classify_with(self, model: object) -> list[Prediction]:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            model_path = Path(temporary_directory) / "model.pkl"
+            model_path.touch()
+            with patch("pickle.load", return_value=model):
+                classifier = RealtimeClassifier(model_path, SpectralFeatureExtractor())
+        return list(classifier.predict_windows(iter(signal(6, 125))))
 
     def test_first_decision_needs_a_full_window_and_then_one_every_63_samples(self) -> None:
         self.assertEqual(len(self.classify(FEATURE_COLUMNS, signal(6, 124))), 0)
@@ -170,7 +205,11 @@ class PredictCliTests(unittest.TestCase):
             with patch("sys.argv", arguments), patch.object(ExecutableCapture, "stream_samples", stream):
                 with redirect_stdout(StringIO()) as output:
                     cli.main()
-        self.assertEqual(output.getvalue().splitlines(), ["Predicción: lento", "Predicción: lento", "Predicción detenida."])
+        lines = output.getvalue().splitlines()
+        self.assertEqual(len(lines), 3)
+        for line in lines[:2]:
+            self.assertRegex(line, r"^Predicción: lento \| confianza: \d+\.\d%$")
+        self.assertEqual(lines[2], "Predicción detenida.")
 
     def test_missing_model_fails_before_starting_the_capturer(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

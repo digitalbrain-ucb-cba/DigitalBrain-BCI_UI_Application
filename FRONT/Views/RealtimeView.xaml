@@ -24,69 +24,124 @@
                            Foreground="{DynamicResource TextSecondaryBrush}" />
             </StackPanel>
 
-            <!-- Predicción en vivo -->
-            <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,28,0,0" Padding="32,28">
-                <StackPanel>
-                    <TextBlock Text="Clasificación en vivo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,8" />
-                    <TextBlock Text="Ventanas de 125 muestras con una decisión nueva cada 63 muestras (0,5 s). El envío de comandos al robot UGOT todavía no está conectado."
-                               FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="24" MaxWidth="800" HorizontalAlignment="Left" />
+            <Grid Grid.Row="1" Margin="0,28,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="380" />
+                </Grid.ColumnDefinitions>
 
-                    <TextBlock Text="MODELO" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
-                    <DockPanel IsEnabled="{Binding IsPredicting, Converter={StaticResource InverseBool}}">
-                        <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Margin="10,0,0,0"
-                                Command="{Binding BrowseModelCommand}" ToolTip="Buscar el modelo" />
-                        <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Models}"
-                                  SelectedItem="{Binding SelectedModel}" DisplayMemberPath="Name"
-                                  ToolTip="{Binding SelectedModel.FilePath}" />
-                    </DockPanel>
+                <!-- Predicción en vivo -->
+                <Border Style="{StaticResource CardStyle}" Padding="32,28" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="Clasificación en vivo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,8" />
+                        <TextBlock Text="Ventanas de 125 muestras con una decisión nueva cada 63 muestras (0,5 s). El envío de comandos al robot UGOT todavía no está conectado."
+                                   FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="24" />
 
-                    <TextBlock Text="RUTA CONDUMPAUTO.EXE" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
-                    <TextBox Style="{StaticResource InputStyle}" Text="{Binding ExecutablePath, Mode=OneWay}" IsReadOnly="True"
-                             ToolTip="{Binding ExecutablePath}" />
+                        <TextBlock Text="MODELO" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
+                        <DockPanel IsEnabled="{Binding IsPredicting, Converter={StaticResource InverseBool}}">
+                            <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Margin="10,0,0,0"
+                                    Command="{Binding BrowseModelCommand}" ToolTip="Buscar el modelo" />
+                            <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Models}"
+                                      SelectedItem="{Binding SelectedModel}" DisplayMemberPath="Name"
+                                      ToolTip="{Binding SelectedModel.FilePath}" />
+                        </DockPanel>
 
-                    <Grid Margin="0,24,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="200" />
-                        </Grid.ColumnDefinitions>
-                        <Border Style="{StaticResource TileStyle}" Margin="0,0,14,0">
-                            <StackPanel>
-                                <TextBlock Text="Predicción actual" Style="{StaticResource TileLabelStyle}" />
-                                <TextBlock Text="{Binding CurrentPrediction}" Style="{StaticResource TileValueStyle}" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="1" Style="{StaticResource TileStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Decisiones" Style="{StaticResource TileLabelStyle}" />
-                                <TextBlock Text="{Binding PredictionCountText}" Style="{StaticResource TileValueStyle}" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+                        <Grid Margin="0,24,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="120" />
+                            </Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource TileStyle}" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="Predicción actual" Style="{StaticResource TileLabelStyle}" />
+                                    <TextBlock Text="{Binding CurrentPrediction}" Style="{StaticResource TileValueStyle}"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding CurrentPrediction}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource TileStyle}" Margin="0,0,10,0"
+                                    ToolTip="Probabilidad que el modelo da a su predicción en esta ventana">
+                                <StackPanel>
+                                    <TextBlock Text="Confianza" Style="{StaticResource TileLabelStyle}" />
+                                    <TextBlock Text="{Binding CurrentConfidence}" Style="{StaticResource TileValueStyle}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource TileStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Decisiones" Style="{StaticResource TileLabelStyle}" />
+                                    <TextBlock Text="{Binding PredictionCountText}" Style="{StaticResource TileValueStyle}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
-                    <TextBlock Text="{Binding DeviceStatus}" Style="{StaticResource HintTextStyle}" />
-                    <TextBlock Text="{Binding Message}" FontSize="14" TextWrapping="Wrap" Margin="0,10,0,0">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsError}" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                        <TextBlock Text="{Binding DeviceStatus}" Style="{StaticResource HintTextStyle}" />
+                        <TextBlock Text="{Binding Message}" FontSize="14" TextWrapping="Wrap" Margin="0,10,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsError}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,22,0,0">
-                        <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding TogglePredictionCommand}" Margin="0,0,14,0">
-                            <TextBlock Text="{Binding ToggleText}" />
-                        </Button>
-                        <Button Style="{StaticResource OutlineButtonStyle}" Command="{Binding NavigateCaptureCommand}">
-                            <TextBlock Text="Ir a Capturar" />
-                        </Button>
+                        <StackPanel Orientation="Horizontal" Margin="0,22,0,0">
+                            <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding TogglePredictionCommand}" Margin="0,0,14,0">
+                                <TextBlock Text="{Binding ToggleText}" />
+                            </Button>
+                            <Button Style="{StaticResource OutlineButtonStyle}" Command="{Binding NavigateCaptureCommand}">
+                                <TextBlock Text="Ir a Capturar" />
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-            </Border>
+                </Border>
+
+                <!-- Historial -->
+                <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="28,24" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="Últimas 20 predicciones" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,12" />
+                        <DockPanel Margin="0,0,0,6">
+                            <TextBlock DockPanel.Dock="Right" Text="CONFIANZA" Style="{StaticResource TileLabelStyle}" />
+                            <TextBlock Text="PREDICCIÓN" Style="{StaticResource TileLabelStyle}" />
+                        </DockPanel>
+                        <TextBlock Text="Aún no hay predicciones.">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource HintTextStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RecentPredictions.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <ItemsControl ItemsSource="{Binding RecentPredictions}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:PredictionItem}">
+                                    <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" Padding="0,4">
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding ConfidenceText}" FontSize="15" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                            <TextBlock DockPanel.Dock="Left" Text="{Binding NumberText}" FontFamily="{StaticResource MonoFont}" FontSize="12.5"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" Width="58" VerticalAlignment="Center" />
+                                            <Ellipse DockPanel.Dock="Left" Width="9" Height="9" Fill="{Binding AccentHex}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                            <TextBlock Text="{Binding Name}" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Style="{StaticResource HintTextStyle}" Margin="0,12,0,0"
+                                   Text="La confianza es la probabilidad que el modelo da a su predicción en cada ventana. No es una exactitud medida: en vivo no se conoce el movimiento real." />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
     </ScrollViewer>
 </UserControl>

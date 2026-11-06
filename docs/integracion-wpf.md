@@ -11,7 +11,7 @@ Actualmente, WPF se integra con la CLI de Python (`PythonCliBridge`) para operac
 | Capturar a un archivo | Comando `capture` con la ruta de la carpeta externa del programa | No hay eventos estructurados de progreso o control remoto de parada. |
 | Crear CSV | Comando `build-dataset` | Solo argumentos y resultado de texto. |
 | Entrenar | Comando `train` con `--algorithm` | Solo argumentos y exactitud impresa. |
-| Predecir ventanas | Comando `predict` | `PythonCliRealtimeGateway` lee las líneas `Predicción: etiqueta`; para detenerlo se cierra el árbol de procesos. |
+| Predecir ventanas | Comando `predict` | `PythonCliRealtimeGateway` lee las líneas `Predicción: etiqueta | confianza: 87.0%`; para detenerlo se cierra el árbol de procesos. |
 
 ## Contrato por definir
 

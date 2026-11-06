@@ -5,11 +5,11 @@ namespace DigitalBrain.UI.UseCases.Ports;
 /// </summary>
 public interface IRealtimeGateway
 {
-    /// <param name="onPrediction">Se invoca desde un hilo de fondo con la etiqueta de cada ventana.</param>
+    /// <param name="onPrediction">Se invoca desde un hilo de fondo con la decisión de cada ventana.</param>
     /// <param name="onLog">Se invoca desde un hilo de fondo con las líneas de estado del capturador.</param>
     Task<RealtimeOutcome> RunAsync(
         RealtimeRequest request,
-        Action<string> onPrediction,
+        Action<RealtimePrediction> onPrediction,
         Action<string> onLog,
         CancellationToken cancellationToken);
 }
@@ -17,6 +17,10 @@ public interface IRealtimeGateway
 /// <param name="ExecutablePath">Ruta completa del ejecutable (p. ej. ConDumpAuto.exe).</param>
 /// <param name="ModelPath">Modelo <c>.pkl</c> entrenado en la aplicación o con MachineLearning.py.</param>
 public sealed record RealtimeRequest(string ExecutablePath, string ModelPath);
+
+/// <param name="Label">Etiqueta del dataset.</param>
+/// <param name="Confidence">Probabilidad de 0 a 1 que el modelo da a su etiqueta, o <c>null</c> si el modelo no la calcula. No es una exactitud medida.</param>
+public sealed record RealtimePrediction(string Label, double? Confidence);
 
 public sealed record RealtimeOutcome(bool Cancelled, string? Error)
 {

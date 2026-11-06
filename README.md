@@ -10,7 +10,7 @@ DigitalBrain procesa capturas de cuatro canales, extrae características espectr
 | Preparación de datos | La CLI convierte archivos `.txt` en CSV con 16 características por ventana y una etiqueta. |
 | Entrenamiento | La CLI entrena Random Forest, LDA, SVM, Extra Trees o Gradient Boosting. |
 | Inferencia | El comando `predict` lanza el capturador y clasifica en vivo cada ventana de 125 muestras, con una decisión nueva cada 63. Acepta modelos del proyecto y de `MachineLearning.py`. |
-| Interfaz WPF | Pantalla **Captura y entrenamiento** funcional: graba con la CLI `capture`, muestra los cuatro canales en vivo y entrena con `build-dataset` + `train`. La pantalla **Tiempo real** lista por nombre los modelos de `BACK/artifacts/models`, ejecuta `predict` y muestra la clase de cada ventana; el envío de comandos al robot UGOT sigue pendiente. |
+| Interfaz WPF | Pantalla **Captura y entrenamiento** funcional: graba con la CLI `capture`, muestra los cuatro canales en vivo y entrena con `build-dataset` + `train`. La pantalla **Tiempo real** lista por nombre los modelos de `BACK/artifacts/models`, ejecuta `predict` y muestra las últimas 20 predicciones con la confianza del modelo en cada una; el envío de comandos al robot UGOT sigue pendiente. |
 
 ## Estructura
 
@@ -83,11 +83,13 @@ cd FRONT
 dotnet run --project DigitalBrain.UI.csproj
 ```
 
+Al abrirse, la aplicación crea o actualiza en el escritorio el acceso directo **DigitalBrain**, que usa `Ejecutar-DigitalBrain.bat` con la consola minimizada; así recompila si el código cambió.
+
 La aplicación localiza `BACK/` subiendo desde su carpeta de ejecución, así que debe lanzarse desde el repositorio.
 
 ### Organización de las capturas
 
-Cada movimiento es una carpeta de `BACK/datos/` y cada sujeto una subcarpeta suya: `datos/<movimiento>/<sujeto>/*.txt`. Las carpetas se crean solas al añadir un movimiento o un sujeto desde la pantalla (y, si faltara, al grabar). No hay archivo de configuración aparte: las listas de la interfaz se leen de esas carpetas.
+Cada movimiento es una carpeta de `BACK/datos/` y cada sujeto una subcarpeta suya: `datos/<movimiento>/<sujeto>/*.txt`. El sujeto lleva el prefijo del **Tipo de modelo** elegido en Capturar (`ModelMI_Arturo`, `ModelM_Arturo`), y la lista de Capturar muestra solo los de ese tipo. Los sujetos antiguos sin prefijo ya no se ofrecen para grabar, pero siguen disponibles en Entrenar. Las carpetas se crean solas al añadir un movimiento o un sujeto desde la pantalla (y, si faltara, al grabar). No hay archivo de configuración aparte: las listas de la interfaz se leen de esas carpetas.
 
 - Los tres movimientos predefinidos conservan sus carpetas (`datos\Right\`, `datos\left\`, `datos\datos_hombro_derecho\`) y sus nombres de archivo (`Brazo derecho 26b.txt`, `Pierna izquierda 27.txt`, `Hombro derecho_11.txt`).
 - Un movimiento añadido, por ejemplo «Codo», usa `datos\Codo\`, la etiqueta `codo` (minúsculas, sin tildes, `_` en lugar de espacios) y archivos `Codo 1.txt`, `Codo 2.txt`…
@@ -126,7 +128,7 @@ con `BACK/` como directorio de trabajo. La CLI reenvía por stdout lo que imprim
 - No se sobrescriben capturas: si el nombre ya existe, la pantalla pide otro número de sesión.
 - Los metadatos que la CLI no guarda (sujeto, notas, duración configurada, muestras) se añaden como una línea JSON a `BACK/datos_capturados/sesiones.jsonl`, carpeta ignorada por Git, para no mezclar archivos extra con los `.txt` de entrenamiento.
 
-**Entrenamiento.** **Entrenar modelo** ejecuta `build-dataset` una vez por carpeta con capturas de lo elegido: la del sujeto concreto o, con «Todos los sujetos», la de cada sujeto más la del movimiento si tiene capturas sueltas. Cada una genera `BACK/artifacts/datasets/<etiqueta>__<sujeto>.csv` (`<etiqueta>__anteriores.csv` para las sueltas) con la etiqueta del movimiento. Después ejecuta `train` con el algoritmo elegido en la lista sobre todos esos CSV y guarda el modelo en `BACK/artifacts/models/`. El nombre propuesto es `<sujeto>_<algoritmo>.pkl` (`todos` o `varios` si no hay un único sujeto) y se puede editar; si el archivo ya existe se avisa antes de reemplazarlo. Se necesitan al menos dos movimientos. Antes de llamar a Python se comprueba que cada movimiento elegido dé ventanas (cada archivo necesita al menos 125 muestras válidas, 1 s sin saturar); si no, se indica qué movimiento y sujeto fallan. Si `build-dataset` o `train` fallan igualmente, se muestra la última línea de error de Python. La exactitud mostrada es la que imprime `train`, sobre una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto.
+**Entrenamiento.** **Entrenar modelo** ejecuta `build-dataset` una vez por carpeta con capturas de lo elegido: la del sujeto concreto o, con «Todos los sujetos», la de cada sujeto más la del movimiento si tiene capturas sueltas. Cada una genera `BACK/artifacts/datasets/<etiqueta>__<sujeto>.csv` (`<etiqueta>__anteriores.csv` para las sueltas) con la etiqueta del movimiento. Después ejecuta `train` con el algoritmo elegido en la lista sobre todos esos CSV y guarda el modelo en `BACK/artifacts/models/`. El nombre es automático, `<prefijo>_<sujeto>_<algoritmo>.pkl` (`todos` o `varios` si no hay un único sujeto), y el botón **Editar** permite cambiarlo; si el archivo ya existe se avisa antes de reemplazarlo. Se necesitan al menos dos movimientos. Antes de llamar a Python se comprueba que cada movimiento elegido dé ventanas (cada archivo necesita al menos 125 muestras válidas, 1 s sin saturar); si no, se indica qué movimiento y sujeto fallan. Si `build-dataset` o `train` fallan igualmente, se muestra la última línea de error de Python. La exactitud mostrada es la que imprime `train`, sobre una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto.
 
 ### Arquitectura del código creado
 

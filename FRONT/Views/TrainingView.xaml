@@ -142,10 +142,16 @@
                                       SelectedItem="{Binding SelectedAlgorithm}" DisplayMemberPath="DisplayName" />
 
                             <TextBlock Text="NOMBRE DEL ARCHIVO" Style="{StaticResource FieldLabelStyle}" Margin="0,18,0,6" />
-                            <TextBox Style="{StaticResource InputStyle}" Tag="{Binding SuggestedModelName}"
-                                     Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged}" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Width="76" Margin="10,0,0,0"
+                                        Content="{Binding EditModelNameText}" Command="{Binding ToggleEditModelNameCommand}"
+                                        ToolTip="Cambiar el nombre automático" />
+                                <TextBox Style="{StaticResource InputStyle}" Tag="{Binding SuggestedModelName}"
+                                         IsReadOnly="{Binding IsEditingModelName, Converter={StaticResource InverseBool}}"
+                                         Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding ModelName}" />
+                            </DockPanel>
                             <TextBlock Style="{StaticResource HintTextStyle}"
-                                       Text="Se propone sujeto y algoritmo; puedes cambiarlo. Se guarda como .pkl en artifacts/models." />
+                                       Text="Automático: prefijo y nombre del sujeto más el algoritmo. Al editar, déjalo vacío para volver a él. Se guarda como .pkl en artifacts/models." />
                             <TextBlock Text="{Binding ModelNameWarning}" Style="{StaticResource WarningTextStyle}" />
                         </StackPanel>
 
