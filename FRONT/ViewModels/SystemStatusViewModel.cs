@@ -16,6 +16,8 @@ public partial class SystemStatusViewModel : ObservableObject
     [ObservableProperty] private bool _isCapturing;
     /// <summary>Hay un entrenamiento en curso; las pantallas lo usan para no capturar a la vez.</summary>
     [ObservableProperty] private bool _isTraining;
+    /// <summary>La pantalla «Tiempo real» está usando el casco; no se puede capturar a la vez.</summary>
+    [ObservableProperty] private bool _isPredicting;
 
     public void RefreshModel(string modelPath)
     {

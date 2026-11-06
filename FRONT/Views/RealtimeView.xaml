@@ -20,29 +20,69 @@
                 <TextBlock Text="PASO 3 · INFERENCIA Y CONTROL ROBÓTICO" Style="{StaticResource SectionLabelStyle}" />
                 <TextBlock Text="Tiempo real" FontFamily="{StaticResource DisplayFont}" FontSize="36" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,4" />
-                <TextBlock Text="Clasificación en vivo de bioseñales EEG y transmisión de comandos hacia el robot UGOT." FontSize="18"
+                <TextBlock Text="Clasificación en vivo de bioseñales EEG con el modelo entrenado." FontSize="18"
                            Foreground="{DynamicResource TextSecondaryBrush}" />
             </StackPanel>
 
-            <!-- Tarjeta de estado de pantalla en desarrollo -->
+            <!-- Predicción en vivo -->
             <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,28,0,0" Padding="32,28">
                 <StackPanel>
-                    <DockPanel LastChildFill="False" Margin="0,0,0,16">
-                        <Border Background="{DynamicResource TileBackgroundBrush}" CornerRadius="12" Padding="12,6">
-                            <TextBlock Text="Módulo en desarrollo" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" FontSize="14" />
-                        </Border>
+                    <TextBlock Text="Clasificación en vivo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,8" />
+                    <TextBlock Text="Ventanas de 125 muestras con una decisión nueva cada 63 muestras (0,5 s). El envío de comandos al robot UGOT todavía no está conectado."
+                               FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="24" MaxWidth="800" HorizontalAlignment="Left" />
+
+                    <TextBlock Text="MODELO (.PKL)" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
+                    <DockPanel IsEnabled="{Binding IsPredicting, Converter={StaticResource InverseBool}}">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Margin="10,0,0,0"
+                                Command="{Binding BrowseModelCommand}" ToolTip="Buscar el modelo" />
+                        <TextBox Style="{StaticResource InputStyle}" Tag="ModelMotores.pkl"
+                                 Text="{Binding ModelPath, UpdateSourceTrigger=LostFocus}"
+                                 ToolTip="{Binding ModelPath}" />
                     </DockPanel>
 
-                    <TextBlock Text="Control del Robot UGOT en Vivo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,8" />
-                    <TextBlock Text="Esta pantalla conectará el flujo de adquisición del casco en vivo con RealtimeClassifier en Python. Las ventanas de 125 muestras procesadas cada 63 pasos (0,5 s) generarán predicciones continuas para traducir la intención motora (brazo derecho, pierna izquierda, reposo) en instrucciones de movimiento por Wi-Fi hacia el robot UGOT."
-                               FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="24" MaxWidth="800" Margin="0,0,0,24" />
+                    <TextBlock Text="RUTA CONDUMPAUTO.EXE" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
+                    <TextBox Style="{StaticResource InputStyle}" Text="{Binding ExecutablePath, Mode=OneWay}" IsReadOnly="True"
+                             Tag="Elígela en la pantalla Capturar" ToolTip="{Binding ExecutablePath}" />
 
-                    <StackPanel Orientation="Horizontal">
-                        <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding NavigateCaptureCommand}" Margin="0,0,14,0">
-                            <TextBlock Text="Ir a Capturar" />
+                    <Grid Margin="0,24,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="200" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource TileStyle}" Margin="0,0,14,0">
+                            <StackPanel>
+                                <TextBlock Text="Predicción actual" Style="{StaticResource TileLabelStyle}" />
+                                <TextBlock Text="{Binding CurrentPrediction}" Style="{StaticResource TileValueStyle}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource TileStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Decisiones" Style="{StaticResource TileLabelStyle}" />
+                                <TextBlock Text="{Binding PredictionCountText}" Style="{StaticResource TileValueStyle}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Text="{Binding DeviceStatus}" Style="{StaticResource HintTextStyle}" />
+                    <TextBlock Text="{Binding Message}" FontSize="14" TextWrapping="Wrap" Margin="0,10,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsError}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,22,0,0">
+                        <Button Style="{StaticResource PrimaryButtonStyle}" Command="{Binding TogglePredictionCommand}" Margin="0,0,14,0">
+                            <TextBlock Text="{Binding ToggleText}" />
                         </Button>
-                        <Button Style="{StaticResource OutlineButtonStyle}" Command="{Binding NavigateHomeCommand}">
-                            <TextBlock Text="Volver al Inicio" />
+                        <Button Style="{StaticResource OutlineButtonStyle}" Command="{Binding NavigateCaptureCommand}">
+                            <TextBlock Text="Ir a Capturar" />
                         </Button>
                     </StackPanel>
                 </StackPanel>

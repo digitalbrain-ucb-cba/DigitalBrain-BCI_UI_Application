@@ -32,6 +32,7 @@ public partial class App : Application
             return new PythonCliBridge(environment.PythonExecutable, environment.BackendRoot);
         });
         services.AddSingleton<ICaptureGateway, PythonCliCaptureGateway>();
+        services.AddSingleton<IRealtimeGateway, PythonCliRealtimeGateway>();
         services.AddSingleton<ISessionLog, JsonlSessionLog>();
         services.AddSingleton<IDataCatalog, FileSystemDataCatalog>();
         services.AddSingleton<IRecordingRepository, FileSystemRecordingRepository>();
@@ -77,5 +78,12 @@ public partial class App : Application
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         _serviceProvider.GetRequiredService<INavigationService>().NavigateTo<HomeViewModel>();
         mainWindow.Show();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        // La predicción no tiene duración: sin esto, Python y el capturador seguirían abiertos con el casco ocupado.
+        _serviceProvider.GetRequiredService<RealtimeViewModel>().Stop();
+        base.OnExit(e);
     }
 }

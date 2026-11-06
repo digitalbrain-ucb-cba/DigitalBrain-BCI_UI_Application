@@ -19,7 +19,7 @@ Las flechas representan importaciones directas entre componentes. La CLI crea el
 | `application/dataset.py` | Lee capturas por medio de infraestructura, forma ventanas y escribe CSV etiquetados. |
 | `application/models.py` | Construye los cinco estimadores y conserva la configuración propia de SVM. |
 | `application/training.py` | Carga y valida CSV, divide filas, entrena, evalúa y guarda un modelo. |
-| `application/realtime.py` | Carga un modelo y clasifica un iterador de muestras por ventanas. |
+| `application/realtime.py` | Carga un modelo y clasifica por ventanas el flujo de muestras que entrega `ExecutableCapture.stream_samples()`. |
 | `infrastructure/capture.py` | Interpreta líneas de captura, lee archivos y ejecuta el capturador externo. |
 | `cli.py` | Expone `capture`, `build-dataset` y `train`. |
 
@@ -34,10 +34,10 @@ Carpeta externa del programa ──capture──► archivo .txt
                                   ▼
                             CSV etiquetado ──train──► modelo .pkl
 
-iterador de muestras + modelo .pkl ──► RealtimeClassifier ──► etiquetas
+ConDumpAuto.exe + modelo .pkl ──► predict (RealtimeClassifier) ──► etiquetas
 ```
 
-`capture` recibe la ruta de una carpeta externa que contiene `ConDump.exe` y sus archivos auxiliares. Ejecuta el programa con esa carpeta como directorio de trabajo y guarda en `BACK/datos_capturados/` por defecto. `build-dataset` recibe explícitamente una carpeta de archivos `.txt`; no hay conexión automática entre ambos pasos. Tampoco hay un comando de inferencia en tiempo real que una el proceso de adquisición con `RealtimeClassifier`.
+`capture` recibe la ruta de una carpeta externa que contiene `ConDump.exe` y sus archivos auxiliares. Ejecuta el programa con esa carpeta como directorio de trabajo y guarda en `BACK/datos_capturados/` por defecto. `build-dataset` recibe explícitamente una carpeta de archivos `.txt`; no hay conexión automática entre ambos pasos. `predict` une la adquisición con `RealtimeClassifier` y clasifica en vivo hasta que se detiene.
 
 Los datos originales versionados están en `BACK/datos/`. Las rutas `BACK/artifacts/datasets/` y `BACK/artifacts/models/` son ejemplos de salida: se crean al ejecutar los casos de uso, no son carpetas obligatorias del paquete.
 

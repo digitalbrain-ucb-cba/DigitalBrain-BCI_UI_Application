@@ -7,6 +7,8 @@ import numpy as np
 CHANNEL_NAMES = ("A", "B", "C", "D")
 FREQUENCY_BANDS = {"theta": (4, 8), "alpha": (8, 13), "beta": (13, 30), "gamma": (30, None)}
 FEATURE_COLUMNS = tuple(f"{band}_{channel}" for band in FREQUENCY_BANDS for channel in CHANNEL_NAMES)
+# DatosACSVNew.py y MachineLearning.py nombran las mismas columnas ThetaA, AlphaB…: nombre del script -> nombre del proyecto.
+SCRIPT_FEATURE_COLUMNS = {f"{band.capitalize()}{channel}": f"{band}_{channel}" for band in FREQUENCY_BANDS for channel in CHANNEL_NAMES}
 
 
 class InvalidSignalWindowError(ValueError):
@@ -22,6 +24,11 @@ class SpectralFeatureExtractor:
         self.sample_rate_hz = sample_rate_hz
         self.window_size = window_size
         self._frequencies = np.fft.fftfreq(window_size, d=1 / sample_rate_hz)
+
+    @property
+    def default_step(self) -> int:
+        """Media ventana redondeada hacia arriba: 63 muestras para 125, el avance de DatosACSVNew.py."""
+        return (self.window_size + 1) // 2
 
     def extract(self, channels: Sequence[Sequence[float]]) -> dict[str, float]:
         self._validate_window(channels)

@@ -1,7 +1,8 @@
 """Adaptadores de entrada para el capturador externo y sus archivos."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 import codecs
+from contextlib import suppress
 from pathlib import Path
 import queue
 import re
@@ -95,6 +96,44 @@ class ExecutableCapture:
     def __init__(self, executable_path: Path) -> None:
         self.executable_path = Path(executable_path).resolve()
 
+    def stream_samples(self, on_message: Callable[[str], None] = print) -> Iterator[tuple[float, float, float, float]]:
+        """Entrega en vivo las mismas muestras que ``read_samples`` leería de un archivo; relanza el capturador si termina.
+
+        Las líneas que no son muestras (estado del casco, cabeceras) van a ``on_message``. Si una ejecución
+        termina sin ninguna muestra válida no se relanza, porque sin casco se repetiría indefinidamente.
+        """
+        if not self.executable_path.is_file():
+            raise FileNotFoundError(f"No se encontró el ejecutable: {self.executable_path}")
+        while True:
+            received = 0
+            for line in self._run_lines():
+                sample = parse_sample(line)
+                if sample is not None:
+                    received += 1
+                    yield sample
+                elif line.strip() and not is_complete_sample(line):
+                    on_message(line.strip())
+            if received == 0:
+                raise RuntimeError(
+                    f"{self.executable_path.name} terminó sin muestras válidas: revisa que el casco esté conectado y sin saturar."
+                )
+
+    def _run_lines(self) -> Iterator[str]:
+        process = subprocess.Popen(
+            [str(self.executable_path)],
+            cwd=str(self.executable_path.parent),
+            stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            shell=False,
+        )
+        try:
+            for line in process.stdout:
+                yield line.decode("utf-8", errors="replace")
+        finally:
+            _stop_process(process)
+            process.stdout.close()
+            _close_stdin(process)
+
     def capture_to_file(
         self,
         output_directory: Path = Path("datos_capturados"),
@@ -169,19 +208,7 @@ class ExecutableCapture:
                     writer.feed(text, received_at)
                     output_file.flush()
 
-                if process.poll() is None:
-                    try:
-                        if process.stdin is not None:
-                            process.stdin.write(b"stop\n")
-                            process.stdin.flush()
-                        process.wait(timeout=3)
-                    except (BrokenPipeError, OSError, subprocess.TimeoutExpired):
-                        process.terminate()
-                        try:
-                            process.wait(timeout=1)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                            process.wait()
+                _stop_process(process)
 
                 reader.join()
                 while True:
@@ -207,14 +234,38 @@ class ExecutableCapture:
             if process.poll() is None:
                 process.kill()
                 process.wait()
-            if process.stdin is not None:
-                process.stdin.close()
+            _close_stdin(process)
             process.stdout.close()
 
         print("\nTiempo cumplido. Programa detenido.")
         print(f"Líneas guardadas: {writer.written}; descartadas por estar incompletas o mal formadas: {writer.rejected}")
         print(f"Datos guardados en: {output_path}")
         return output_path
+
+
+def _stop_process(process: subprocess.Popen[bytes]) -> None:
+    """Pide al capturador que pare y, si no responde, lo termina."""
+    if process.poll() is not None:
+        return
+    try:
+        if process.stdin is not None:
+            process.stdin.write(b"stop\n")
+            process.stdin.flush()
+        process.wait(timeout=3)
+    except (BrokenPipeError, OSError, subprocess.TimeoutExpired):
+        process.terminate()
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+
+
+def _close_stdin(process: subprocess.Popen[bytes]) -> None:
+    """«stop» puede seguir en el búfer si el programa cerró la tubería antes de recibirlo: cerrar lo reintenta y falla."""
+    if process.stdin is not None:
+        with suppress(OSError):
+            process.stdin.close()
 
 
 def _next_capture_path(output_directory: Path, prefix: str, extension: str = ".txt") -> Path:

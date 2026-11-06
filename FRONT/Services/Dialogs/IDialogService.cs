@@ -4,6 +4,7 @@ namespace DigitalBrain.UI.Services.Dialogs;
 public interface IDialogService
 {
     string? PickExecutable(string? initialPath);
+    string? PickModel(string? initialPath);
     string? PickFolder(string? initialPath);
     void OpenFolder(string path);
 }

@@ -9,8 +9,8 @@ DigitalBrain procesa capturas de cuatro canales, extrae características espectr
 | Captura | La CLI recibe la carpeta externa del capturador, ejecuta `ConDump.exe` desde allí y guarda su salida. El programa y sus archivos auxiliares no se incluyen. |
 | Preparación de datos | La CLI convierte archivos `.txt` en CSV con 16 características por ventana y una etiqueta. |
 | Entrenamiento | La CLI entrena Random Forest, LDA, SVM, Extra Trees o Gradient Boosting. |
-| Inferencia | Existe `RealtimeClassifier` para uso desde Python, pero no hay comando `predict` ni conexión directa con la captura. |
-| Interfaz WPF | Pantalla **Captura y entrenamiento** funcional: graba con la CLI `capture`, muestra los cuatro canales en vivo y entrena con `build-dataset` + `train`. El resto de pantallas de la barra lateral están pendientes. |
+| Inferencia | El comando `predict` lanza el capturador y clasifica en vivo cada ventana de 125 muestras, con una decisión nueva cada 63. Acepta modelos del proyecto y de `MachineLearning.py`. |
+| Interfaz WPF | Pantalla **Captura y entrenamiento** funcional: graba con la CLI `capture`, muestra los cuatro canales en vivo y entrena con `build-dataset` + `train`. La pantalla **Tiempo real** ejecuta `predict` y muestra la clase de cada ventana; el envío de comandos al robot UGOT sigue pendiente. |
 
 ## Estructura
 
@@ -58,6 +58,14 @@ $capturador = "C:\ruta\a\la\carpeta\del\capturador"
 & $pythonDB -m digital_brain.cli capture $capturador datos_capturados --prefix sesion --seconds 30 --capture-from 6
 ```
 
+Para clasificar en vivo con un modelo entrenado, detén el comando con `Ctrl+C` cuando termines:
+
+```powershell
+python -m digital_brain.cli predict $capturador artifacts\models\ModelMotores.pkl
+```
+
+`predict` busca `ConDumpAuto.exe` por defecto, lo relanza si termina y se detiene con un error si una ejecución no entrega ninguna muestra válida. `train` acepta también los CSV de `DatosACSVNew.py`, y `predict` los `.pkl` de `MachineLearning.py`.
+
 El primer argumento de `capture` es **la carpeta**, no el archivo `.exe`. Por defecto busca `ConDump.exe` en ella. Si el ejecutable tiene otro nombre, añade `--executable-name ConDumpAuto.exe` o el nombre real. El proceso se inicia con esa carpeta como directorio de trabajo para que pueda encontrar sus dependencias. La ruta se pasa al ejecutar el comando; no se guarda en el código ni en Git.
 
 El archivo capturado queda en `datos_capturados/`, una carpeta ignorada por Git; no se incorpora automáticamente a un dataset. Para ver los parámetros disponibles, ejecuta `& $pythonDB -m digital_brain.cli capture --help`.
@@ -90,7 +98,7 @@ Cada movimiento es una carpeta de `BACK/datos/` y cada sujeto una subcarpeta suy
 | Zona | Comportamiento |
 | --- | --- |
 | Configuración de sesión | **Movimiento** y **Sujeto** son listas; el sujeto muestra solo los que tiene el movimiento elegido (si también existe en el nuevo movimiento, se mantiene al cambiarlo). El botón **+** de cada lista abre un campo para escribir uno nuevo (Intro añade, Esc cancela). Si el nombre ya existe en ese movimiento aparece un aviso y no se crea nada; tampoco se aceptan nombres que no sirvan como carpeta. Al añadir un movimiento se pide directamente su primer sujeto. **Duración de la grabación** son los segundos que se guardan; los 5 s de estabilización se suman aparte (25 s → el capturador corre 30 s). La **carpeta de salida** es automática (`datos\<movimiento>\<sujeto>\`) y el número de sesión propuesto es el siguiente libre en esa carpeta. La ruta del ejecutable se recuerda entre ejecuciones. |
-| Parámetros avanzados | Solo lectura. Muestran los valores que usa el backend: 125 Hz, ventana de 125 muestras, avance de 62 muestras (`window_size // 2`), saturación ±800 µV y canales A–D. |
+| Parámetros avanzados | Solo lectura. Muestran los valores que usa el backend: 125 Hz, ventana de 125 muestras, avance de 63 muestras (media ventana redondeada hacia arriba), saturación ±800 µV y canales A–D. |
 | CH-A … CH-D | Últimos 4 s de cada canal mientras se graba, con la amplitud pico (±µV) de lo visible. |
 | Válidas CH-x | Porcentaje de muestras de ese canal que no están en ±800 µV dentro del tramo que se guarda. |
 | Grabación | **Iniciar captura** ejecuta la captura; el mismo botón pasa a **Detener captura**. Durante los primeros 5 s el estado indica «Estabilizando» y el tiempo no avanza; después cuenta solo el tiempo que se guarda. Muestras válidas (líneas que `build-dataset` usará) y descartadas (alguna columna en ±800 µV). Al terminar, los contadores se recalculan sobre el archivo guardado. No se puede capturar mientras se entrena. |
@@ -127,7 +135,7 @@ El proyecto sigue capas de arquitectura limpia: las dependencias apuntan hacia e
 ```text
 FRONT/
 ├── Models/                       # Dominio: sin WPF ni procesos
-│   ├── AcquisitionParameters.cs  # 125 Hz, ventana 125, avance 62, ±800 µV, canales; cálculo de ventanas
+│   ├── AcquisitionParameters.cs  # 125 Hz, ventana 125, avance 63, ±800 µV, canales; cálculo de ventanas
 │   ├── SignalValidity.cs         # Lectura de una línea y regla de saturación (equivalente a parse_sample)
 │   ├── MovementClass.cs          # Clase/movimiento: etiqueta, carpeta, patrón de nombre; predefinidos y añadidos
 │   ├── CatalogNames.cs           # Reglas de nombres de movimiento/sujeto (sirven de carpeta)

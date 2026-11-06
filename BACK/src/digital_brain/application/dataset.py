@@ -11,7 +11,7 @@ def build_dataset(input_directory: Path, output_path: Path, label: str, extracto
     capture_files = sorted(input_directory.glob("*.txt"))
     if not capture_files:
         raise FileNotFoundError(f"No se encontraron archivos .txt en: {input_directory}")
-    step_size = step_size or extractor.window_size // 2
+    step_size = step_size or extractor.default_step
     if step_size <= 0:
         raise ValueError("El avance de ventana debe ser positivo.")
     rows = [{**extractor.extract(window), "label": label} for file_path in capture_files for window in _windows(read_samples(file_path), extractor.window_size, step_size)]

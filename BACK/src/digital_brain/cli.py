@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 from digital_brain.application.dataset import build_dataset
 from digital_brain.application.models import MODEL_NAMES
+from digital_brain.application.realtime import RealtimeClassifier
 from digital_brain.application.training import train_classifier
 from digital_brain.domain.signal_features import SpectralFeatureExtractor
 from digital_brain.infrastructure.capture import ExecutableCapture
@@ -35,6 +36,18 @@ def main() -> None:
     capture_command.add_argument("--prefix", default="captura")
     capture_command.add_argument("--seconds", type=float, default=30)
     capture_command.add_argument("--capture-from", type=float, default=6)
+    predict_command = commands.add_parser("predict", help="Clasifica en vivo la salida del capturador hasta detenerlo con Ctrl+C.")
+    predict_command.add_argument(
+        "program_directory",
+        type=Path,
+        help="Carpeta externa que contiene el ejecutable y sus archivos auxiliares.",
+    )
+    predict_command.add_argument("model_path", type=Path)
+    predict_command.add_argument(
+        "--executable-name",
+        default="ConDumpAuto.exe",
+        help="Nombre del ejecutable dentro de la carpeta (por defecto: ConDumpAuto.exe).",
+    )
     arguments = parser.parse_args()
     if arguments.command == "build-dataset":
         dataset = build_dataset(arguments.input_directory, arguments.output_path, arguments.label, SpectralFeatureExtractor())
@@ -50,6 +63,20 @@ def main() -> None:
             total_seconds=arguments.seconds,
             capture_from=arguments.capture_from,
         )
+    elif arguments.command == "predict":
+        try:
+            executable_path = _resolve_capture_executable(arguments.program_directory, arguments.executable_name)
+            classifier = RealtimeClassifier(arguments.model_path, SpectralFeatureExtractor())
+        except (NotADirectoryError, FileNotFoundError, ValueError) as error:
+            predict_command.error(str(error))
+        try:
+            samples = ExecutableCapture(executable_path).stream_samples(lambda message: print(message, flush=True))
+            for label in classifier.predict_windows(samples):
+                print(f"Predicción: {label}", flush=True)
+        except KeyboardInterrupt:
+            print("Predicción detenida.")
+        except RuntimeError as error:
+            predict_command.exit(1, f"{error}\n")
     else:
         score = train_classifier(arguments.datasets, arguments.model_path, algorithm=arguments.algorithm)
         print(f"Modelo {arguments.algorithm} guardado en {arguments.model_path}; exactitud: {score:.3f}")

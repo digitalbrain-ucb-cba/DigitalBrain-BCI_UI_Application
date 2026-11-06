@@ -31,8 +31,8 @@ public static class AcquisitionParameters
     /// <summary>Tamaño de ventana en muestras (1 segundo de señal: redondeado a entero).</summary>
     public static int WindowSize => Math.Max(1, (int)Math.Round(SampleRateHz));
 
-    /// <summary>Avance entre ventanas: <c>window_size // 2</c> en el backend (solapamiento al 50%).</summary>
-    public static int WindowStep => Math.Max(1, WindowSize / 2);
+    /// <summary>Avance entre ventanas: <c>default_step</c> en el backend, media ventana redondeada hacia arriba (63 para 125).</summary>
+    public static int WindowStep => Math.Max(1, (WindowSize + 1) / 2);
 
     public static double OverlapRatio => 1.0 - (double)WindowStep / WindowSize;
 

@@ -10,7 +10,7 @@ El capturador externo y sus archivos auxiliares no están incluidos en el reposi
 
 ## Ventanas y características
 
-El extractor usa por defecto 125 muestras por canal y una frecuencia de 125 Hz: una ventana representa aproximadamente un segundo. `build_dataset` avanza `125 // 2 = 62` muestras entre ventanas, por lo que dos ventanas consecutivas comparten 63 muestras. Las ventanas se forman por separado para cada archivo de captura.
+El extractor usa por defecto 125 muestras por canal y una frecuencia de 125 Hz: una ventana representa aproximadamente un segundo. `build_dataset` avanza 63 muestras entre ventanas (media ventana redondeada hacia arriba, igual que `DatosACSVNew.py`), por lo que dos ventanas consecutivas comparten 62 muestras. Las ventanas se forman por separado para cada archivo de captura.
 
 En cada ventana se aplica una FFT a los cuatro canales. El programa suma la potencia `|FFT|²` de frecuencias positivas en cuatro bandas: theta `[4, 8)`, alpha `[8, 13)`, beta `[13, 30)` y gamma desde `30 Hz` hasta el límite positivo representado por la FFT. El resultado son 16 columnas: una por combinación de banda y canal A, B, C o D. Actualmente no se aplica una ventana de Hann, detrend ni filtrado adicional en este extractor.
 
@@ -18,7 +18,7 @@ El CSV generado contiene esas 16 columnas y `label`. La etiqueta es un argumento
 
 ## Entrenamiento e inferencia
 
-`application/training.py` combina uno o más CSV y exige las 16 columnas y al menos dos etiquetas. Divide las filas al azar en 80 % para entrenamiento y 20 % para prueba, con estratificación por etiqueta y `random_state=7`. Después entrena el estimador seleccionado, lo guarda como `.pkl` y devuelve su exactitud en la partición de prueba.
+`application/training.py` combina uno o más CSV, normalmente uno por movimiento, y exige las 16 columnas y al menos dos etiquetas. También acepta los CSV de `DatosACSVNew.py`: ignora su columna de índice y traduce `ThetaA`, `AlphaB`… a `theta_A`, `alpha_B`… Divide las filas al azar en 80 % para entrenamiento y 20 % para prueba, con estratificación por etiqueta y `random_state=7`. Después entrena el estimador seleccionado, lo guarda como `.pkl` y devuelve su exactitud en la partición de prueba.
 
 | Algoritmo | Configuración actual |
 | --- | --- |
@@ -28,9 +28,9 @@ El CSV generado contiene esas 16 columnas y `label`. La etiqueta es un argumento
 | `extra_trees` | `ExtraTreesClassifier(random_state=7)` |
 | `gradient_boosting` | `GradientBoostingClassifier(random_state=7)` |
 
-La división aleatoria puede colocar ventanas solapadas de una misma captura a ambos lados de la evaluación. Por ejemplo, las ventanas de muestras `0–124` y `62–186` comparten 63 muestras, pero pueden terminar una en entrenamiento y otra en prueba. **La exactitud actual puede ser optimista** y no mide generalización a una sesión o sujeto nuevo. Para evaluar eso harán falta metadatos de origen y una división por grupos; todavía no está implementada.
+La división aleatoria puede colocar ventanas solapadas de una misma captura a ambos lados de la evaluación. Por ejemplo, las ventanas de muestras `0–124` y `63–187` comparten 62 muestras, pero pueden terminar una en entrenamiento y otra en prueba. **La exactitud actual puede ser optimista** y no mide generalización a una sesión o sujeto nuevo. Para evaluar eso harán falta metadatos de origen y una división por grupos; todavía no está implementada.
 
-`RealtimeClassifier` carga un `.pkl` y recibe un iterador de tuplas de cuatro valores. Forma ventanas con el extractor suministrado y entrega una etiqueta por ventana. El código de inferencia no comprueba metadatos del modelo ni conecta por sí solo con `ExecutableCapture`. Carga únicamente modelos `.pkl` de fuentes confiables.
+El comando `predict` conecta `ExecutableCapture.stream_samples()` con `RealtimeClassifier`. Las muestras en vivo pasan por el mismo `parse_sample` que los archivos, así que las líneas con `-800` u `800` se descartan igual que en el entrenamiento. La primera decisión llega con 125 muestras válidas y después hay una cada 63, sobre una ventana deslizante en orden temporal. `RealtimeClassifier` nombra las columnas como las guardó el modelo, por lo que sirven tanto los `.pkl` del proyecto como los de `MachineLearning.py`. Carga únicamente modelos `.pkl` de fuentes confiables.
 
 ## Archivos relacionados
 

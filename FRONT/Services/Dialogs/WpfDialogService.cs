@@ -16,6 +16,17 @@ public sealed class WpfDialogService : IDialogService
         return dialog.ShowDialog() == true ? dialog.FileName : null;
     }
 
+    public string? PickModel(string? initialPath)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Selecciona el modelo",
+            Filter = "Modelos (*.pkl)|*.pkl",
+            InitialDirectory = ExistingDirectory(Path.GetDirectoryName(initialPath ?? "")),
+        };
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
     public string? PickFolder(string? initialPath)
     {
         var dialog = new OpenFolderDialog

@@ -126,7 +126,7 @@ public sealed partial class PythonCliCaptureGateway(IBackendEnvironment environm
         return CaptureOutcome.Saved(request.OutputPath);
     }
 
-    private static void KillTree(Process process)
+    internal static void KillTree(Process process)
     {
         try
         {
@@ -147,6 +147,6 @@ public sealed partial class PythonCliCaptureGateway(IBackendEnvironment environm
         }
     }
 
-    private static string LastLines(string text, int count) =>
+    internal static string LastLines(string text, int count) =>
         string.Join(Environment.NewLine, text.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Length > 0).TakeLast(count));
 }
