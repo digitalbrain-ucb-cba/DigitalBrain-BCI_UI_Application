@@ -133,9 +133,9 @@ public sealed partial class PythonCliCaptureGateway(IBackendEnvironment environm
             if (!process.HasExited)
                 process.Kill(entireProcessTree: true);
         }
-        catch (InvalidOperationException)
+        catch (Exception ex) when (ex is InvalidOperationException or AggregateException or System.ComponentModel.Win32Exception)
         {
-            // El proceso terminó entre la comprobación y Kill.
+            // Terminó entre la comprobación y Kill, o Windows no dejó cerrar algún proceso del árbol.
         }
     }
 

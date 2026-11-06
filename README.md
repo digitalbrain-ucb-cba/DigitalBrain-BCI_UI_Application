@@ -89,7 +89,7 @@ La aplicación localiza `BACK/` subiendo desde su carpeta de ejecución, así qu
 
 ### Organización de las capturas
 
-Cada movimiento es una carpeta de `BACK/datos/` y cada sujeto una subcarpeta suya: `datos/<movimiento>/<sujeto>/*.txt`. El sujeto lleva el prefijo del **Tipo de modelo** elegido en Capturar (`ModelMI_Arturo`, `ModelM_Arturo`), y la lista de Capturar muestra solo los de ese tipo. Los sujetos antiguos sin prefijo ya no se ofrecen para grabar, pero siguen disponibles en Entrenar. Las carpetas se crean solas al añadir un movimiento o un sujeto desde la pantalla (y, si faltara, al grabar). No hay archivo de configuración aparte: las listas de la interfaz se leen de esas carpetas.
+Cada movimiento es una carpeta de `BACK/datos/` y cada sujeto una subcarpeta suya: `datos/<movimiento>/<sujeto>/*.txt`. El sujeto lleva la abreviatura del **Tipo de modelo** elegido en Capturar: Motor Imagery guarda `ModelMI_Arturo` y Motor Movement `ModelM_Arturo`, y la lista de Capturar muestra solo los de ese tipo. Los sujetos antiguos sin prefijo ya no se ofrecen para grabar, pero siguen disponibles en Entrenar. Las carpetas se crean solas al añadir un movimiento o un sujeto desde la pantalla (y, si faltara, al grabar). No hay archivo de configuración aparte: las listas de la interfaz se leen de esas carpetas.
 
 - Los tres movimientos predefinidos conservan sus carpetas (`datos\Right\`, `datos\left\`, `datos\datos_hombro_derecho\`) y sus nombres de archivo (`Brazo derecho 26b.txt`, `Pierna izquierda 27.txt`, `Hombro derecho_11.txt`).
 - Un movimiento añadido, por ejemplo «Codo», usa `datos\Codo\`, la etiqueta `codo` (minúsculas, sin tildes, `_` en lugar de espacios) y archivos `Codo 1.txt`, `Codo 2.txt`…

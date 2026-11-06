@@ -74,6 +74,7 @@ public partial class RealtimeViewModel : BaseViewModel
     [ObservableProperty] private string _executablePath = "";
     [ObservableProperty] private ModelOption? _selectedModel;
     [ObservableProperty] private bool _isPredicting;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ToggleText))] private bool _isStopping;
     [ObservableProperty] private string _currentPrediction = NoPrediction;
     [ObservableProperty] private string _currentConfidence = NoPrediction;
     [ObservableProperty] private string _predictionCountText = "0";
@@ -81,7 +82,7 @@ public partial class RealtimeViewModel : BaseViewModel
     [ObservableProperty] private string _message = "";
     [ObservableProperty] private bool _isError;
 
-    public string ToggleText => IsPredicting ? "Detener predicción" : "Iniciar predicción";
+    public string ToggleText => IsStopping ? "Deteniendo…" : IsPredicting ? "Detener predicción" : "Iniciar predicción";
 
     public override void OnNavigatedTo()
     {
@@ -129,7 +130,12 @@ public partial class RealtimeViewModel : BaseViewModel
     {
         if (IsPredicting)
         {
-            Stop();
+            if (!IsStopping)
+            {
+                IsStopping = true;
+                ShowMessage("Cerrando el capturador…");
+                Stop();
+            }
             return;
         }
 
@@ -172,6 +178,7 @@ public partial class RealtimeViewModel : BaseViewModel
         finally
         {
             IsPredicting = false;
+            IsStopping = false;
             Status.IsHeadsetStreaming = false;
             _predictionCts.Dispose();
             _predictionCts = null;

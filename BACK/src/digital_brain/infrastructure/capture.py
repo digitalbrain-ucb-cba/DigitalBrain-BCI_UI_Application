@@ -8,7 +8,7 @@ import queue
 import re
 import subprocess
 import sys
-from threading import Thread
+from threading import Event, Thread
 import time
 from typing import TextIO
 
@@ -95,6 +95,8 @@ class ExecutableCapture:
 
     def __init__(self, executable_path: Path) -> None:
         self.executable_path = Path(executable_path).resolve()
+        self._process: subprocess.Popen[bytes] | None = None
+        self._stop_requested = Event()
 
     def stream_samples(self, on_message: Callable[[str], None] = print) -> Iterator[tuple[float, float, float, float]]:
         """Entrega en vivo las mismas muestras que ``read_samples`` leería de un archivo; relanza el capturador si termina.
@@ -104,7 +106,7 @@ class ExecutableCapture:
         """
         if not self.executable_path.is_file():
             raise FileNotFoundError(f"No se encontró el ejecutable: {self.executable_path}")
-        while True:
+        while not self._stop_requested.is_set():
             received = 0
             for line in self._run_lines():
                 sample = parse_sample(line)
@@ -113,19 +115,28 @@ class ExecutableCapture:
                     yield sample
                 elif line.strip() and not is_complete_sample(line):
                     on_message(line.strip())
-            if received == 0:
+            if received == 0 and not self._stop_requested.is_set():
                 raise RuntimeError(
                     f"{self.executable_path.name} terminó sin muestras válidas: revisa que el casco esté conectado y sin saturar."
                 )
 
+    def stop(self) -> None:
+        """Termina ``stream_samples`` desde otro hilo: el capturador cierra su sesión y no se relanza."""
+        self._stop_requested.set()
+        if self._process is not None:
+            _stop_process(self._process)
+
     def _run_lines(self) -> Iterator[str]:
+        # stderr va a la misma tubería: si lo heredara, el capturador mantendría abierta la de quien lanzó Python.
         process = subprocess.Popen(
             [str(self.executable_path)],
             cwd=str(self.executable_path.parent),
             stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
             shell=False,
         )
+        self._process = process
         try:
             for line in process.stdout:
                 yield line.decode("utf-8", errors="replace")
@@ -252,7 +263,7 @@ def _stop_process(process: subprocess.Popen[bytes]) -> None:
             process.stdin.write(b"stop\n")
             process.stdin.flush()
         process.wait(timeout=3)
-    except (BrokenPipeError, OSError, subprocess.TimeoutExpired):
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         process.terminate()
         try:
             process.wait(timeout=1)

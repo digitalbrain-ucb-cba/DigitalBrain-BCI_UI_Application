@@ -4,11 +4,13 @@ namespace DigitalBrain.UI.Models;
 /// Tipo de modelo al que pertenece un sujeto. Va como prefijo en el nombre de su carpeta (<c>ModelMI_Arturo</c>),
 /// y de ahí pasa al nombre del modelo entrenado. El separador evita confundir <c>ModelM</c> + <c>Iguel</c> con <c>ModelMI</c> + <c>guel</c>.
 /// </summary>
-public sealed record ModelType(string Prefix)
+/// <param name="Prefix">Abreviatura con que se guarda.</param>
+/// <param name="DisplayName">Nombre visible.</param>
+public sealed record ModelType(string Prefix, string DisplayName)
 {
     private const char Separator = '_';
 
-    public static readonly IReadOnlyList<ModelType> All = [new("ModelMI"), new("ModelM")];
+    public static readonly IReadOnlyList<ModelType> All = [new("ModelMI", "Motor Imagery"), new("ModelM", "Motor Movement")];
 
     /// <summary>Tipo de un sujeto según su prefijo, o <c>null</c> si su carpeta no lleva ninguno.</summary>
     public static ModelType? Of(string? subject) =>
@@ -23,5 +25,5 @@ public sealed record ModelType(string Prefix)
         return normalized.Length == 0 ? "" : $"{Prefix}{Separator}{normalized}";
     }
 
-    public override string ToString() => Prefix;
+    public override string ToString() => DisplayName;
 }

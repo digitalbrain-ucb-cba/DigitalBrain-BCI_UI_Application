@@ -189,6 +189,50 @@ class StreamSamplesTests(unittest.TestCase):
         self.assertEqual(fake.launches, 1)
 
 
+class StopTests(unittest.TestCase):
+    def test_stop_lets_the_capturer_close_and_does_not_relaunch_it(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            fake = FakeCapturer(directory, [])
+            closed = directory / "closed.txt"
+            fake.script.write_text(
+                "import sys, threading, time\n"
+                f"def wait():\n    sys.stdin.readline()\n    open({str(closed)!r}, 'w').close()\n    import os; os._exit(0)\n"
+                "threading.Thread(target=wait, daemon=True).start()\n"
+                "while True:\n    print('1,2,3,4', flush=True)\n    time.sleep(0.01)\n",
+                encoding="utf-8",
+            )
+            capture = ExecutableCapture(fake.executable)
+            with patch("subprocess.Popen", fake):
+                stream = capture.stream_samples(lambda _: None)
+                next(stream)
+                capture.stop()
+                list(stream)
+            self.assertTrue(closed.is_file())
+        self.assertEqual(fake.launches, 1)
+
+    def test_stopping_before_any_valid_sample_is_not_an_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            fake = FakeCapturer(Path(temporary_directory), ["Connecting to device. Please wait..."])
+            capture = ExecutableCapture(fake.executable)
+
+            def stop_on_first_message(_: str) -> None:
+                capture.stop()
+
+            with patch("subprocess.Popen", fake):
+                self.assertEqual(list(capture.stream_samples(stop_on_first_message)), [])
+        self.assertEqual(fake.launches, 1)
+
+    def test_capturer_errors_share_the_output_pipe(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            fake = FakeCapturer(Path(temporary_directory), [])
+            fake.script.write_text("import sys\nprint('sin casco', file=sys.stderr, flush=True)\n", encoding="utf-8")
+            messages: list[str] = []
+            with patch("subprocess.Popen", fake), self.assertRaises(RuntimeError):
+                list(ExecutableCapture(fake.executable).stream_samples(messages.append))
+        self.assertEqual(messages, ["sin casco"])
+
+
 class PredictCliTests(unittest.TestCase):
     def test_predict_prints_one_labelled_line_per_window_until_interrupted(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

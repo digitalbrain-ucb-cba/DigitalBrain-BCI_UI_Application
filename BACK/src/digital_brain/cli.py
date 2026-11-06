@@ -1,7 +1,10 @@
 """Puntos de entrada explícitos para los casos de uso."""
 
 import argparse
+import os
 from pathlib import Path
+import sys
+from threading import Thread
 from digital_brain.application.dataset import build_dataset
 from digital_brain.application.models import MODEL_NAMES
 from digital_brain.application.realtime import RealtimeClassifier
@@ -70,17 +73,35 @@ def main() -> None:
         except (NotADirectoryError, FileNotFoundError, ValueError) as error:
             predict_command.error(str(error))
         try:
-            samples = ExecutableCapture(executable_path).stream_samples(lambda message: print(message, flush=True))
+            capture = ExecutableCapture(executable_path)
+            Thread(target=_stop_when_requested, args=(capture,), name="parada", daemon=True).start()
+            samples = capture.stream_samples(lambda message: print(message, flush=True))
             for label, confidence in classifier.predict_windows(samples):
                 detail = "" if confidence is None else f" | confianza: {confidence:.1%}"
                 print(f"Predicción: {label}{detail}", flush=True)
         except KeyboardInterrupt:
-            print("Predicción detenida.")
+            pass
         except RuntimeError as error:
             predict_command.exit(1, f"{error}\n")
+        print("Predicción detenida.", flush=True)
     else:
         score = train_classifier(arguments.datasets, arguments.model_path, algorithm=arguments.algorithm)
         print(f"Modelo {arguments.algorithm} guardado en {arguments.model_path}; exactitud: {score:.3f}")
+
+
+def _stop_when_requested(capture: ExecutableCapture) -> None:
+    """Escribir «stop» por stdin detiene la predicción dejando que el capturador libere el casco.
+
+    Se lee del descriptor y no de ``sys.stdin``: este hilo sigue bloqueado al salir, y hacerlo sobre
+    el búfer de ``sys.stdin`` puede abortar el intérprete.
+    """
+    try:
+        while data := os.read(sys.stdin.fileno(), 64):
+            if b"stop" in data:
+                capture.stop()
+                return
+    except (AttributeError, OSError, ValueError):
+        return  # Sin stdin utilizable solo queda Ctrl+C.
 
 
 def _resolve_capture_executable(program_directory: Path, executable_name: str) -> Path:
