@@ -1,7 +1,7 @@
 namespace DigitalBrain.UI.Models;
 
 /// <summary>
-/// Tipo de modelo al que pertenece un sujeto. Va como prefijo en el nombre de su carpeta (<c>ModelMI_Arturo</c>),
+/// Tipo de entrenamiento al que pertenece un sujeto. Va como prefijo en el nombre de su carpeta (<c>ModelMI_Arturo</c>),
 /// y de ahí pasa al nombre del modelo entrenado. El separador evita confundir <c>ModelM</c> + <c>Iguel</c> con <c>ModelMI</c> + <c>guel</c>.
 /// </summary>
 /// <param name="Prefix">Abreviatura con que se guarda.</param>

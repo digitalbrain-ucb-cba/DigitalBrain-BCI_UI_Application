@@ -7,6 +7,7 @@ public static class DesktopShortcut
 {
     private const string ShortcutName = "DigitalBrain.lnk";
     private const string LauncherName = "Ejecutar-DigitalBrain.bat";
+    private static readonly string IconRelativePath = Path.Combine("FRONT", "Assets", "DigitalBrain.ico");
     private const int NormalWindow = 1;
     private const int MinimizedWindow = 7;
 
@@ -24,7 +25,9 @@ public static class DesktopShortcut
             var repositoryRoot = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(backendRoot));
             var launcher = repositoryRoot is null ? null : Path.Combine(repositoryRoot, LauncherName);
             var useLauncher = File.Exists(launcher);
-            Save(Path.Combine(desktop, ShortcutName), useLauncher ? launcher! : appPath, appPath, useLauncher ? MinimizedWindow : NormalWindow);
+            var icon = repositoryRoot is null ? null : Path.Combine(repositoryRoot, IconRelativePath);
+            Save(Path.Combine(desktop, ShortcutName), useLauncher ? launcher! : appPath, File.Exists(icon) ? icon! : appPath,
+                useLauncher ? MinimizedWindow : NormalWindow);
         }
         catch (Exception ex)
         {

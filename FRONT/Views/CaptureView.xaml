@@ -114,8 +114,8 @@
                                 <TextBlock Text="{Binding MovementWarning}" Style="{StaticResource WarningTextStyle}" />
                             </StackPanel>
 
-                            <!-- Tipo de modelo: prefijo del sujeto -->
-                            <TextBlock Text="TIPO DE MODELO" Style="{StaticResource FieldLabelStyle}" />
+                            <!-- Tipo de entrenamiento: prefijo del sujeto -->
+                            <TextBlock Text="TIPO DE ENTRENAMIENTO" Style="{StaticResource FieldLabelStyle}" />
                             <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding ModelTypes}"
                                       SelectedItem="{Binding SelectedModelType}" />
 
