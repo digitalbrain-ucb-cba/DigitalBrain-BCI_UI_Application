@@ -31,18 +31,18 @@
                     <TextBlock Text="Ventanas de 125 muestras con una decisión nueva cada 63 muestras (0,5 s). El envío de comandos al robot UGOT todavía no está conectado."
                                FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="24" MaxWidth="800" HorizontalAlignment="Left" />
 
-                    <TextBlock Text="MODELO (.PKL)" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
+                    <TextBlock Text="MODELO" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
                     <DockPanel IsEnabled="{Binding IsPredicting, Converter={StaticResource InverseBool}}">
                         <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Margin="10,0,0,0"
                                 Command="{Binding BrowseModelCommand}" ToolTip="Buscar el modelo" />
-                        <TextBox Style="{StaticResource InputStyle}" Tag="ModelMotores.pkl"
-                                 Text="{Binding ModelPath, UpdateSourceTrigger=LostFocus}"
-                                 ToolTip="{Binding ModelPath}" />
+                        <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Models}"
+                                  SelectedItem="{Binding SelectedModel}" DisplayMemberPath="Name"
+                                  ToolTip="{Binding SelectedModel.FilePath}" />
                     </DockPanel>
 
                     <TextBlock Text="RUTA CONDUMPAUTO.EXE" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
                     <TextBox Style="{StaticResource InputStyle}" Text="{Binding ExecutablePath, Mode=OneWay}" IsReadOnly="True"
-                             Tag="Elígela en la pantalla Capturar" ToolTip="{Binding ExecutablePath}" />
+                             ToolTip="{Binding ExecutablePath}" />
 
                     <Grid Margin="0,24,0,0">
                         <Grid.ColumnDefinitions>

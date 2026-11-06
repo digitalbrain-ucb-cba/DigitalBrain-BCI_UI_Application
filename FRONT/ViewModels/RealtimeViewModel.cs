@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Windows.Threading;
@@ -8,6 +9,14 @@ using DigitalBrain.UI.Services.Navigation;
 using DigitalBrain.UI.UseCases.Ports;
 
 namespace DigitalBrain.UI.ViewModels;
+
+/// <summary>Opción de la lista de modelos: se ve el nombre del archivo y se usa su ruta.</summary>
+public sealed record ModelOption(string FilePath)
+{
+    public string Name => Path.GetFileName(FilePath);
+    // ComboStyle dibuja el elemento elegido con ToString(), no con DisplayMemberPath.
+    public override string ToString() => Name;
+}
 
 /// <summary>
 /// Pantalla «Tiempo real» (paso 3): lanza el capturador con el modelo elegido y muestra la clase de cada ventana.
@@ -47,13 +56,13 @@ public partial class RealtimeViewModel : BaseViewModel
         _dialogs = dialogs;
         Status = status;
         Status.PropertyChanged += OnStatusChanged;
-        _modelPath = environment.ModelPath;
     }
 
     public SystemStatusViewModel Status { get; }
+    public ObservableCollection<ModelOption> Models { get; } = [];
 
     [ObservableProperty] private string _executablePath = "";
-    [ObservableProperty] private string _modelPath;
+    [ObservableProperty] private ModelOption? _selectedModel;
     [ObservableProperty] private bool _isPredicting;
     [ObservableProperty] private string _currentPrediction = NoPrediction;
     [ObservableProperty] private string _predictionCountText = "0";
@@ -65,8 +74,21 @@ public partial class RealtimeViewModel : BaseViewModel
 
     public override void OnNavigatedTo()
     {
-        // La ruta del capturador se elige en la pantalla Capturar.
-        ExecutablePath = _settings.Load().ExecutablePath ?? "";
+        // La ruta del capturador se cambia en la pantalla Capturar.
+        ExecutablePath = _settings.Load().CaptureExecutablePath;
+        if (!IsPredicting) ReloadModels();
+    }
+
+    /// <summary>Lista los modelos de la carpeta; conserva el elegido, aunque venga de otra carpeta, o toma el más reciente.</summary>
+    private void ReloadModels()
+    {
+        var selected = SelectedModel;
+        Models.Clear();
+        foreach (var file in _environment.GetModelFiles())
+            Models.Add(new ModelOption(file));
+        if (selected is not null && !Models.Contains(selected) && File.Exists(selected.FilePath))
+            Models.Add(selected);
+        SelectedModel = Models.Contains(selected!) ? selected : Models.FirstOrDefault();
     }
 
     partial void OnIsPredictingChanged(bool value)
@@ -84,8 +106,11 @@ public partial class RealtimeViewModel : BaseViewModel
     [RelayCommand]
     private void BrowseModel()
     {
-        if (_dialogs.PickModel(ModelPath) is { } path)
-            ModelPath = path;
+        if (_dialogs.PickModel(SelectedModel?.FilePath ?? _environment.ModelsDirectory + Path.DirectorySeparatorChar) is not { } path)
+            return;
+        var model = new ModelOption(path);
+        if (!Models.Contains(model)) Models.Add(model);
+        SelectedModel = model;
     }
 
     [RelayCommand(AllowConcurrentExecutions = true, CanExecute = nameof(CanTogglePrediction))]
@@ -97,13 +122,13 @@ public partial class RealtimeViewModel : BaseViewModel
             return;
         }
 
-        ExecutablePath = _settings.Load().ExecutablePath ?? "";
+        ExecutablePath = _settings.Load().CaptureExecutablePath;
         if (!File.Exists(ExecutablePath))
         {
-            ShowMessage("Elige la ruta de ConDumpAuto.exe en la pantalla Capturar.", isError: true);
+            ShowMessage($"No se encontró el capturador en {ExecutablePath}. Cambia la ruta en la pantalla Capturar si en este equipo está en otro lugar.", isError: true);
             return;
         }
-        if (!File.Exists(ModelPath))
+        if (SelectedModel is not { } model || !File.Exists(model.FilePath))
         {
             ShowMessage("No se encontró el modelo: entrénalo en Entrenar o elige un archivo .pkl.", isError: true);
             return;
@@ -121,7 +146,7 @@ public partial class RealtimeViewModel : BaseViewModel
         try
         {
             var outcome = await _gateway.RunAsync(
-                new RealtimeRequest(ExecutablePath, ModelPath), OnPrediction, OnDeviceLog, _predictionCts.Token);
+                new RealtimeRequest(ExecutablePath, model.FilePath), OnPrediction, OnDeviceLog, _predictionCts.Token);
             if (outcome.Cancelled)
                 ShowMessage("Predicción detenida.");
             else

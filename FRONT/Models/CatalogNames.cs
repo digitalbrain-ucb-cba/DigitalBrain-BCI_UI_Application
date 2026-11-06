@@ -23,12 +23,12 @@ public static class CatalogNames
 
     /// <summary>Devuelve el motivo por el que <paramref name="name"/> no sirve como carpeta, o <c>null</c> si es válido.</summary>
     /// <param name="kind">«sujeto» o «movimiento», para el mensaje.</param>
-    public static string? Validate(string name, string kind)
+    public static string? Validate(string name, string kind, int maxLength = MaxLength)
     {
         if (string.IsNullOrWhiteSpace(name))
             return $"Escribe el nombre del {kind}.";
-        if (name.Length > MaxLength)
-            return $"El nombre del {kind} admite como máximo {MaxLength} caracteres.";
+        if (name.Length > maxLength)
+            return $"El nombre del {kind} admite como máximo {maxLength} caracteres.";
         if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.Contains('{') || name.Contains('}'))
             return "El nombre no puede contener \\ / : * ? \" < > | { }.";
         if (name.StartsWith('.') || name.EndsWith('.'))

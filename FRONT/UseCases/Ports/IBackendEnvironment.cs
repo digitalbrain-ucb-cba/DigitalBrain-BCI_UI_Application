@@ -7,7 +7,9 @@ public interface IBackendEnvironment
     string PythonExecutable { get; }
     string DataRoot { get; }
     string DatasetsDirectory { get; }
-    string ModelPath { get; }
+    string ModelsDirectory { get; }
+    /// <summary>Modelos <c>.pkl</c> de <see cref="ModelsDirectory"/>, el más reciente primero.</summary>
+    IReadOnlyList<string> GetModelFiles();
     /// <summary>Resuelve una ruta relativa a <c>BACK/</c>; deja intactas las absolutas.</summary>
     string Resolve(string path);
 }

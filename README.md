@@ -10,7 +10,7 @@ DigitalBrain procesa capturas de cuatro canales, extrae características espectr
 | Preparación de datos | La CLI convierte archivos `.txt` en CSV con 16 características por ventana y una etiqueta. |
 | Entrenamiento | La CLI entrena Random Forest, LDA, SVM, Extra Trees o Gradient Boosting. |
 | Inferencia | El comando `predict` lanza el capturador y clasifica en vivo cada ventana de 125 muestras, con una decisión nueva cada 63. Acepta modelos del proyecto y de `MachineLearning.py`. |
-| Interfaz WPF | Pantalla **Captura y entrenamiento** funcional: graba con la CLI `capture`, muestra los cuatro canales en vivo y entrena con `build-dataset` + `train`. La pantalla **Tiempo real** ejecuta `predict` y muestra la clase de cada ventana; el envío de comandos al robot UGOT sigue pendiente. |
+| Interfaz WPF | Pantalla **Captura y entrenamiento** funcional: graba con la CLI `capture`, muestra los cuatro canales en vivo y entrena con `build-dataset` + `train`. La pantalla **Tiempo real** lista por nombre los modelos de `BACK/artifacts/models`, ejecuta `predict` y muestra la clase de cada ventana; el envío de comandos al robot UGOT sigue pendiente. |
 
 ## Estructura
 
@@ -61,7 +61,7 @@ $capturador = "C:\ruta\a\la\carpeta\del\capturador"
 Para clasificar en vivo con un modelo entrenado, detén el comando con `Ctrl+C` cuando termines:
 
 ```powershell
-python -m digital_brain.cli predict $capturador artifacts\models\ModelMotores.pkl
+python -m digital_brain.cli predict $capturador artifacts\models\Arturo_random_forest.pkl
 ```
 
 `predict` busca `ConDumpAuto.exe` por defecto, lo relanza si termina y se detiene con un error si una ejecución no entrega ninguna muestra válida. `train` acepta también los CSV de `DatosACSVNew.py`, y `predict` los `.pkl` de `MachineLearning.py`.
@@ -108,7 +108,7 @@ Cada movimiento es una carpeta de `BACK/datos/` y cada sujeto una subcarpeta suy
 
 Una fila por movimiento: casilla para incluirlo en el modelo, lista de sujetos («Todos los sujetos» o uno concreto) y número de grabaciones que se usarán. Hacen falta al menos dos movimientos marcados con grabaciones. La lista se vuelve a leer al entrar en la pestaña (conservando lo elegido) o con «Actualizar lista». La tarjeta Modelo muestra el estado, la exactitud del último entrenamiento, el algoritmo y el archivo. No se puede entrenar mientras se captura.
 
-La barra lateral tiene implementadas «Capturar» y «Entrenar»; las demás entradas están deshabilitadas. El panel Estado indica si llega señal del casco durante la grabación, si existe `ModelMotores.pkl` y el total de grabaciones.
+La barra lateral tiene implementadas «Capturar» y «Entrenar»; las demás entradas están deshabilitadas. El panel Estado indica si llega señal del casco durante la grabación, si hay algún modelo en `BACK/artifacts/models` (muestra el más reciente) y el total de grabaciones.
 
 ### Cómo se conecta con el backend
 
@@ -126,7 +126,7 @@ con `BACK/` como directorio de trabajo. La CLI reenvía por stdout lo que imprim
 - No se sobrescriben capturas: si el nombre ya existe, la pantalla pide otro número de sesión.
 - Los metadatos que la CLI no guarda (sujeto, notas, duración configurada, muestras) se añaden como una línea JSON a `BACK/datos_capturados/sesiones.jsonl`, carpeta ignorada por Git, para no mezclar archivos extra con los `.txt` de entrenamiento.
 
-**Entrenamiento.** **Entrenar modelo** ejecuta `build-dataset` una vez por carpeta con capturas de lo elegido: la del sujeto concreto o, con «Todos los sujetos», la de cada sujeto más la del movimiento si tiene capturas sueltas. Cada una genera `BACK/artifacts/datasets/<etiqueta>__<sujeto>.csv` (`<etiqueta>__anteriores.csv` para las sueltas) con la etiqueta del movimiento. Después ejecuta `train` con `random_forest` sobre todos esos CSV y guarda `BACK/artifacts/models/ModelMotores.pkl`. Se necesitan al menos dos movimientos. Antes de llamar a Python se comprueba que cada movimiento elegido dé ventanas (cada archivo necesita al menos 125 muestras válidas, 1 s sin saturar); si no, se indica qué movimiento y sujeto fallan. Si `build-dataset` o `train` fallan igualmente, se muestra la última línea de error de Python. La exactitud mostrada es la que imprime `train`, sobre una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto.
+**Entrenamiento.** **Entrenar modelo** ejecuta `build-dataset` una vez por carpeta con capturas de lo elegido: la del sujeto concreto o, con «Todos los sujetos», la de cada sujeto más la del movimiento si tiene capturas sueltas. Cada una genera `BACK/artifacts/datasets/<etiqueta>__<sujeto>.csv` (`<etiqueta>__anteriores.csv` para las sueltas) con la etiqueta del movimiento. Después ejecuta `train` con el algoritmo elegido en la lista sobre todos esos CSV y guarda el modelo en `BACK/artifacts/models/`. El nombre propuesto es `<sujeto>_<algoritmo>.pkl` (`todos` o `varios` si no hay un único sujeto) y se puede editar; si el archivo ya existe se avisa antes de reemplazarlo. Se necesitan al menos dos movimientos. Antes de llamar a Python se comprueba que cada movimiento elegido dé ventanas (cada archivo necesita al menos 125 muestras válidas, 1 s sin saturar); si no, se indica qué movimiento y sujeto fallan. Si `build-dataset` o `train` fallan igualmente, se muestra la última línea de error de Python. La exactitud mostrada es la que imprime `train`, sobre una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto.
 
 ### Arquitectura del código creado
 

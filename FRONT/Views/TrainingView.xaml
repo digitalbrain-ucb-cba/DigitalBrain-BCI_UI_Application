@@ -136,8 +136,21 @@
                 <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="28,24" VerticalAlignment="Top">
                     <StackPanel>
                         <TextBlock Text="Modelo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,16" />
-                        <UniformGrid Columns="2">
-                            <Border Style="{StaticResource TileStyle}" Margin="0,0,5,10">
+                        <StackPanel IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}">
+                            <TextBlock Text="ALGORITMO" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,6" />
+                            <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Algorithms}"
+                                      SelectedItem="{Binding SelectedAlgorithm}" DisplayMemberPath="DisplayName" />
+
+                            <TextBlock Text="NOMBRE DEL ARCHIVO" Style="{StaticResource FieldLabelStyle}" Margin="0,18,0,6" />
+                            <TextBox Style="{StaticResource InputStyle}" Tag="{Binding SuggestedModelName}"
+                                     Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource HintTextStyle}"
+                                       Text="Se propone sujeto y algoritmo; puedes cambiarlo. Se guarda como .pkl en artifacts/models." />
+                            <TextBlock Text="{Binding ModelNameWarning}" Style="{StaticResource WarningTextStyle}" />
+                        </StackPanel>
+
+                        <UniformGrid Columns="2" Margin="0,18,0,0">
+                            <Border Style="{StaticResource TileStyle}" Margin="0,0,5,0">
                                 <StackPanel>
                                     <TextBlock Text="ESTADO" Style="{StaticResource TileLabelStyle}" />
                                     <TextBlock>
@@ -154,23 +167,10 @@
                                     </TextBlock>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource TileStyle}" Margin="5,0,0,10">
+                            <Border Style="{StaticResource TileStyle}" Margin="5,0,0,0">
                                 <StackPanel>
                                     <TextBlock Text="EXACTITUD" Style="{StaticResource TileLabelStyle}" />
                                     <TextBlock Text="{Binding AccuracyText}" Style="{StaticResource TileValueStyle}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource TileStyle}" Margin="0,0,5,0">
-                                <StackPanel>
-                                    <TextBlock Text="ALGORITMO" Style="{StaticResource TileLabelStyle}" />
-                                    <TextBlock Text="{Binding AlgorithmText}" Style="{StaticResource TileValueStyle}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource TileStyle}" Margin="5,0,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="ARCHIVO" Style="{StaticResource TileLabelStyle}" />
-                                    <TextBlock Text="{Binding ModelFileName}" Style="{StaticResource TileValueStyle}" FontSize="15"
-                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ModelFileName}" />
                                 </StackPanel>
                             </Border>
                         </UniformGrid>

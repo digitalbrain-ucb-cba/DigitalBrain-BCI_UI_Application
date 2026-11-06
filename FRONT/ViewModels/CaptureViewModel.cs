@@ -67,7 +67,7 @@ public partial class CaptureViewModel : BaseViewModel
             new ChannelViewModel("D", "Channel4Brush"),
         ];
 
-        _executablePath = settings.Load().ExecutablePath ?? "";
+        _executablePath = settings.Load().CaptureExecutablePath;
         _refreshTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, (_, _) => RefreshLive(), Dispatcher.CurrentDispatcher);
 
         ReloadMovements();
@@ -425,7 +425,7 @@ public partial class CaptureViewModel : BaseViewModel
         {
             ShowMessage($"No se pudieron leer las grabaciones de {_environment.DataRoot}: {ex.Message}", isError: true);
         }
-        Status.RefreshModel(_environment.ModelPath);
+        Status.RefreshModel(_environment.GetModelFiles().FirstOrDefault());
     }
 
     private void ReloadMovements(MovementClass? select = null)

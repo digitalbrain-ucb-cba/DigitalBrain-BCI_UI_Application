@@ -117,12 +117,12 @@ public partial class HomeViewModel : BaseViewModel
                 ? $"{count} grabaciones · {movementsCount} movimientos"
                 : "Sin grabaciones registradas";
 
-            HasTrainedModel = File.Exists(_environment.ModelPath);
-            Status.IsModelReady = HasTrainedModel;
-            Status.ModelDetail = HasTrainedModel ? Path.GetFileName(_environment.ModelPath) : "sin entrenar";
+            var latestModel = _environment.GetModelFiles().FirstOrDefault();
+            HasTrainedModel = latestModel is not null;
+            Status.RefreshModel(latestModel);
 
-            ModelStatusText = HasTrainedModel ? Path.GetFileName(_environment.ModelPath) : "Sin entrenar";
-            ModelStatusDetail = HasTrainedModel ? "Random Forest · 16 feat" : "Pendiente de entrenamiento";
+            ModelStatusText = HasTrainedModel ? Path.GetFileName(latestModel)! : "Sin entrenar";
+            ModelStatusDetail = HasTrainedModel ? "Modelo más reciente · 16 feat" : "Pendiente de entrenamiento";
         }
         catch
         {

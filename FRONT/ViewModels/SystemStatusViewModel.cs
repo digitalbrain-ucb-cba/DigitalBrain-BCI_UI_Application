@@ -19,10 +19,10 @@ public partial class SystemStatusViewModel : ObservableObject
     /// <summary>La pantalla «Tiempo real» está usando el casco; no se puede capturar a la vez.</summary>
     [ObservableProperty] private bool _isPredicting;
 
-    public void RefreshModel(string modelPath)
+    public void RefreshModel(string? modelPath)
     {
         IsModelReady = File.Exists(modelPath);
-        ModelDetail = IsModelReady ? Path.GetFileName(modelPath) : "sin entrenar";
+        ModelDetail = IsModelReady ? Path.GetFileName(modelPath)! : "sin entrenar";
     }
 
     partial void OnRecordingCountChanged(int value) =>

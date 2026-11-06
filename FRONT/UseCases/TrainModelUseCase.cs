@@ -14,14 +14,14 @@ public sealed class TrainModelUseCase(
     IRecordingRepository recordings,
     IBackendEnvironment environment)
 {
-    public const string DefaultAlgorithm = "random_forest";
     /// <summary>La división estratificada de <c>train</c> necesita al menos dos ventanas por clase.</summary>
     public const int MinimumWindowsPerMovement = 2;
 
     public async Task<TrainModelResult> ExecuteAsync(
         IReadOnlyList<TrainingSelection> selections,
-        IProgress<string>? progress = null,
-        string algorithm = DefaultAlgorithm)
+        string modelPath,
+        string algorithm,
+        IProgress<string>? progress = null)
     {
         if (selections.Select(s => s.Movement.Label).Distinct().Count() < 2)
             return TrainModelResult.Failure("Elige al menos dos movimientos para entrenar.");
@@ -63,7 +63,7 @@ public sealed class TrainModelUseCase(
         }
 
         progress?.Report("Entrenando modelo…");
-        var result = await backend.TrainModelAsync(environment.ModelPath, datasets, algorithm, progress);
+        var result = await backend.TrainModelAsync(modelPath, datasets, algorithm, progress);
         return result is null
             ? TrainModelResult.Failure(backend.LastError is { } error
                 ? $"El entrenamiento falló: {error}"

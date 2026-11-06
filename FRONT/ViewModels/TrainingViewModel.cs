@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DigitalBrain.UI.Models;
 using DigitalBrain.UI.UseCases;
 using DigitalBrain.UI.UseCases.Ports;
 
@@ -10,15 +11,20 @@ namespace DigitalBrain.UI.ViewModels;
 
 /// <summary>
 /// Pantalla «Entrenar» (paso 2): elige qué movimientos entran en el modelo y, para cada uno,
-/// las capturas de qué sujeto (o de todos) se usan; después construye los datasets y entrena.
+/// las capturas de qué sujeto (o de todos) se usan, con qué algoritmo y con qué nombre se guarda el modelo;
+/// después construye los datasets y entrena.
 /// </summary>
 public partial class TrainingViewModel : BaseViewModel
 {
+    private const string ModelExtension = ".pkl";
+    private const int MaxModelNameLength = 100;
     private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-ES");
 
     private readonly TrainModelUseCase _trainModel;
     private readonly IDataCatalog _catalog;
     private readonly IBackendEnvironment _environment;
+    /// <summary>El usuario escribió su propio nombre: elegir otro sujeto o algoritmo ya no lo cambia.</summary>
+    private bool _isModelNameCustom;
 
     public TrainingViewModel(
         TrainModelUseCase trainModel,
@@ -32,6 +38,7 @@ public partial class TrainingViewModel : BaseViewModel
         _environment = environment;
         Status = status;
         Status.PropertyChanged += OnStatusChanged;
+        UpdateSuggestedModelName();
     }
 
     public SystemStatusViewModel Status { get; }
@@ -44,16 +51,29 @@ public partial class TrainingViewModel : BaseViewModel
     [ObservableProperty] private string _accuracyText = "—";
     [ObservableProperty] private string _trainedClassesText = "";
 
-    public string ModelFileName => Path.GetFileName(_environment.ModelPath);
-    public string AlgorithmText => "Random forest";
+    public IReadOnlyList<TrainingAlgorithm> Algorithms => TrainingAlgorithm.All;
+
+    [ObservableProperty] private TrainingAlgorithm _selectedAlgorithm = TrainingAlgorithm.All[0];
+    [ObservableProperty] private string _modelName = "";
+    [ObservableProperty] private string _suggestedModelName = "";
+    [ObservableProperty] private string _modelNameWarning = "";
 
     public override void OnNavigatedTo()
     {
-        Status.RefreshModel(_environment.ModelPath);
+        Status.RefreshModel(_environment.GetModelFiles().FirstOrDefault());
         if (!IsTraining) Reload();
+        UpdateModelNameWarning();
     }
 
     partial void OnIsTrainingChanged(bool value) => Status.IsTraining = value;
+
+    partial void OnSelectedAlgorithmChanged(TrainingAlgorithm value) => UpdateSuggestedModelName();
+
+    partial void OnModelNameChanged(string value)
+    {
+        _isModelNameCustom = !string.IsNullOrWhiteSpace(value) && value != SuggestedModelName;
+        UpdateModelNameWarning();
+    }
 
     private void OnStatusChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -93,7 +113,15 @@ public partial class TrainingViewModel : BaseViewModel
     [RelayCommand(CanExecute = nameof(CanTrain))]
     private async Task TrainModelAsync()
     {
+        var modelName = EffectiveModelName();
+        if (CatalogNames.Validate(modelName, "modelo", MaxModelNameLength) is { } nameError)
+        {
+            ShowMessage(nameError, isError: true);
+            return;
+        }
+
         var selections = Movements.Where(m => m.IsReady).Select(m => m.ToSelection()).ToList();
+        var algorithm = SelectedAlgorithm;
         IsTraining = true;
         ShowMessage("Preparando datasets…");
         try
@@ -102,14 +130,14 @@ public partial class TrainingViewModel : BaseViewModel
             {
                 if (!string.IsNullOrWhiteSpace(line)) ShowMessage(line.Trim());
             });
-            var result = await _trainModel.ExecuteAsync(selections, progress);
+            var result = await _trainModel.ExecuteAsync(selections, ModelPathFor(modelName), algorithm.Id, progress);
             if (result.Succeeded && result.Training is { } training)
             {
                 AccuracyText = training.Accuracy.ToString("P1", Es);
                 TrainedClassesText = string.Join(" · ", selections.Select(s => s.Description));
-                ShowMessage($"Modelo guardado en {Path.GetFileName(training.ModelPath)}. " +
+                ShowMessage($"Modelo {algorithm.DisplayName} guardado en {Path.GetFileName(training.ModelPath)}. " +
                             $"Exactitud {AccuracyText} sobre una división aleatoria de ventanas, no por sesión ni por sujeto.");
-                Status.RefreshModel(_environment.ModelPath);
+                Status.RefreshModel(training.ModelPath);
             }
             else
             {
@@ -123,6 +151,7 @@ public partial class TrainingViewModel : BaseViewModel
         finally
         {
             IsTraining = false;
+            UpdateModelNameWarning();
         }
     }
 
@@ -140,6 +169,38 @@ public partial class TrainingViewModel : BaseViewModel
             var n => $"{n} movimientos · {recordings} grabaciones.",
         };
         TrainModelCommand.NotifyCanExecuteChanged();
+        UpdateSuggestedModelName();
+    }
+
+    private void UpdateSuggestedModelName()
+    {
+        var subjects = Movements.Where(m => m.IsReady).Select(m => m.SelectedSubject.Name).Distinct().ToList();
+        var subject = subjects.Count switch
+        {
+            0 => "modelo",
+            1 => subjects[0] ?? "todos",
+            _ => "varios",
+        };
+        SuggestedModelName = $"{subject}_{SelectedAlgorithm.Id}";
+        if (!_isModelNameCustom) ModelName = SuggestedModelName;
+    }
+
+    /// <summary>El nombre escrito sin la extensión o, si está vacío, el sugerido.</summary>
+    private string EffectiveModelName()
+    {
+        var name = CatalogNames.Normalize(ModelName);
+        if (name.EndsWith(ModelExtension, StringComparison.OrdinalIgnoreCase))
+            name = name[..^ModelExtension.Length].TrimEnd();
+        return name.Length > 0 ? name : SuggestedModelName;
+    }
+
+    private string ModelPathFor(string name) => Path.Combine(_environment.ModelsDirectory, name + ModelExtension);
+
+    private void UpdateModelNameWarning()
+    {
+        var name = EffectiveModelName();
+        ModelNameWarning = CatalogNames.Validate(name, "modelo", MaxModelNameLength)
+                           ?? (File.Exists(ModelPathFor(name)) ? $"Ya existe {name}{ModelExtension}: al entrenar se reemplazará." : "");
     }
 
     private void ShowMessage(string text, bool isError = false)
