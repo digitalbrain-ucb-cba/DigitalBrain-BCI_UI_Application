@@ -27,6 +27,7 @@ public partial class App : Application
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<IBackendEnvironment, BackendEnvironment>();
         services.AddSingleton<ICaptureService, ConDumpCaptureService>();
+        services.AddSingleton<IHeadsetDetector, WindowsHeadsetDetector>();
         services.AddSingleton<IBackendBridge>(sp =>
         {
             var environment = sp.GetRequiredService<IBackendEnvironment>();
@@ -76,16 +77,24 @@ public partial class App : Application
         var themeService = _serviceProvider.GetRequiredService<IThemeService>();
         themeService.Apply(themeService.Current);
 
+        var status = _serviceProvider.GetRequiredService<SystemStatusViewModel>();
+        var backendEnv = _serviceProvider.GetRequiredService<IBackendEnvironment>();
+        status.RefreshModel(backendEnv.GetModelFiles().FirstOrDefault());
+
+        var detector = _serviceProvider.GetRequiredService<IHeadsetDetector>();
+        detector.StartMonitoring();
+
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         _serviceProvider.GetRequiredService<INavigationService>().NavigateTo<HomeViewModel>();
         mainWindow.Show();
 
-        var backendRoot = _serviceProvider.GetRequiredService<IBackendEnvironment>().BackendRoot;
+        var backendRoot = backendEnv.BackendRoot;
         _ = Task.Run(() => DesktopShortcut.Ensure(backendRoot));
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _serviceProvider.GetRequiredService<IHeadsetDetector>().StopMonitoring();
         // La predicción no tiene duración: sin esto, Python y el capturador seguirían abiertos con el casco ocupado.
         _serviceProvider.GetRequiredService<RealtimeViewModel>().Stop();
         base.OnExit(e);

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -35,6 +36,8 @@ public partial class HomeViewModel : BaseViewModel
         _environment = environment;
         _settings = settings;
 
+        Status.PropertyChanged += OnStatusChanged;
+
         // Cargar frecuencia inicial persistida o actual
         var savedRate = settings.Load().SampleRateHz;
         if (savedRate > 0)
@@ -57,6 +60,7 @@ public partial class HomeViewModel : BaseViewModel
             }
         };
 
+        UpdateDeviceStatus();
         _ = LoadAsync();
     }
 
@@ -72,10 +76,10 @@ public partial class HomeViewModel : BaseViewModel
 
     [ObservableProperty] private string _featuresText = "16 por ventana";
     [ObservableProperty] private string _featuresDetail = "4 bandas × 4 canales";
-    [ObservableProperty] private string _deviceStatusText = "Listo";
-    [ObservableProperty] private string _deviceStatusDetail = "ConDumpAuto · Puerto USB";
-    [ObservableProperty] private string _modelStatusText = "ModelMotores.pkl";
-    [ObservableProperty] private string _modelStatusDetail = "Random Forest · 16 feat";
+    [ObservableProperty] private string _deviceStatusText = "Desconectado";
+    [ObservableProperty] private string _deviceStatusDetail = "Sin conexión · Conecta el casco por USB";
+    [ObservableProperty] private string _modelStatusText = "Sin entrenar";
+    [ObservableProperty] private string _modelStatusDetail = "Pendiente de entrenamiento";
     [ObservableProperty] private string _modelAccuracyText = "96,8 %";
     [ObservableProperty] private string _modelAccuracyDetail = "Validado por grabación";
     [ObservableProperty] private string _responseTimeText = "0,5 s";
@@ -85,6 +89,24 @@ public partial class HomeViewModel : BaseViewModel
     [ObservableProperty] private string _recordingsSummary = "50 grabaciones · 3 movimientos";
     [ObservableProperty] private int _recordingsCount = 50;
     [ObservableProperty] private bool _hasTrainedModel;
+
+    private void OnStatusChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(SystemStatusViewModel.IsHeadsetConnected)
+            or nameof(SystemStatusViewModel.HeadsetDetail)
+            or nameof(SystemStatusViewModel.ConnectedPortName))
+        {
+            UpdateDeviceStatus();
+        }
+    }
+
+    private void UpdateDeviceStatus()
+    {
+        DeviceStatusText = Status.IsHeadsetConnected ? "Conectado" : "Desconectado";
+        DeviceStatusDetail = Status.IsHeadsetConnected
+            ? (!string.IsNullOrWhiteSpace(Status.ConnectedPortName) ? $"Puerto {Status.ConnectedPortName} · USB" : "Puerto USB detectado")
+            : "Sin conexión · Conecta el casco por USB";
+    }
 
     partial void OnSampleRateInputChanged(string value)
     {
@@ -123,6 +145,7 @@ public partial class HomeViewModel : BaseViewModel
 
             ModelStatusText = HasTrainedModel ? Path.GetFileName(latestModel)! : "Sin entrenar";
             ModelStatusDetail = HasTrainedModel ? "Modelo más reciente · 16 feat" : "Pendiente de entrenamiento";
+            UpdateDeviceStatus();
         }
         catch
         {

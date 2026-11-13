@@ -103,6 +103,14 @@ public partial class RealtimeViewModel : BaseViewModel
         SelectedModel = Models.Contains(selected!) ? selected : Models.FirstOrDefault();
     }
 
+    partial void OnSelectedModelChanged(ModelOption? value)
+    {
+        if (value is not null)
+        {
+            Status.RefreshModel(value.FilePath);
+        }
+    }
+
     partial void OnIsPredictingChanged(bool value)
     {
         Status.IsPredicting = value;

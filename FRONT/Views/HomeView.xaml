@@ -16,60 +16,8 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Encabezado con chips de estado -->
+            <!-- Encabezado -->
             <DockPanel Grid.Row="0">
-                <!-- Bloque derecho: chips de estado -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,0">
-                    <!-- Chip 1: Casco EEG -->
-                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                            CornerRadius="16" Padding="14,7" Margin="0,0,10,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource StatusActiveBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="Casco EEG conectado" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Chip 2: Modelo -->
-                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                            CornerRadius="16" Padding="14,7" Margin="0,0,10,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
-                                <Ellipse.Style>
-                                    <Style TargetType="Ellipse">
-                                        <Setter Property="Fill" Value="{StaticResource StatusIdleBrush}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Status.IsModelReady}" Value="True">
-                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Ellipse.Style>
-                            </Ellipse>
-                            <TextBlock FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="Modelo cargado" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Status.IsModelReady}" Value="False">
-                                                <Setter Property="Text" Value="Modelo pendiente" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Chip 3: Robot UGOT -->
-                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                            CornerRadius="16" Padding="14,7">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource StatusActiveBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="Robot UGOT conectado" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
                 <!-- Título y subtítulo -->
                 <StackPanel>
                     <TextBlock Text="PANEL PRINCIPAL" Style="{StaticResource SectionLabelStyle}" />
@@ -163,7 +111,18 @@
                 <Border Grid.Column="6" Style="{StaticResource CardStyle}" Padding="20,18">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource StatusActiveBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource StatusIdleBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status.IsHeadsetConnected}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
                             <TextBlock Text="ESTADO DISPOSITIVO" Style="{StaticResource TileLabelStyle}" />
                         </StackPanel>
                         <TextBlock Text="{Binding DeviceStatusText}" FontFamily="{StaticResource DisplayFont}" FontSize="28" FontWeight="Bold"
