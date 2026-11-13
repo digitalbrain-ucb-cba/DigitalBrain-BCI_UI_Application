@@ -26,7 +26,7 @@
                 <TextBlock Text="PASO 2 · MODELO" Style="{StaticResource SectionLabelStyle}" />
                 <TextBlock Text="Entrenar" FontFamily="{StaticResource DisplayFont}" FontSize="36" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,4" />
-                <TextBlock Text="Elige los movimientos que aprende el modelo y, en cada uno, el sujeto cuyas grabaciones se usan." FontSize="18"
+                <TextBlock Text="Elige el sujeto y cuáles de sus movimientos aprende el modelo." FontSize="18"
                            TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
             </StackPanel>
 
@@ -48,15 +48,17 @@
                             <TextBlock Text="Datos de entrenamiento" Style="{StaticResource CardTitleStyle}" />
                         </DockPanel>
 
+                        <TextBlock Text="SUJETO" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,6" />
+                        <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Subjects}" SelectedItem="{Binding SelectedSubject}"
+                                  IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}" Margin="0,0,0,20" />
+
                         <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="230" />
                                 <ColumnDefinition Width="140" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="MOVIMIENTO" Style="{StaticResource ColumnHeader}" />
-                            <TextBlock Grid.Column="1" Text="SUJETO" Style="{StaticResource ColumnHeader}" />
-                            <TextBlock Grid.Column="2" Text="GRABACIONES" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right" />
+                            <TextBlock Grid.Column="1" Text="GRABACIONES" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right" />
                         </Grid>
 
                         <ItemsControl ItemsSource="{Binding Movements}" Focusable="False"
@@ -67,7 +69,6 @@
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="230" />
                                                 <ColumnDefinition Width="140" />
                                             </Grid.ColumnDefinitions>
                                             <CheckBox Style="{StaticResource CheckStyle}" VerticalAlignment="Center" Margin="0,0,16,0"
@@ -79,9 +80,7 @@
                                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </CheckBox>
-                                            <ComboBox Grid.Column="1" Style="{StaticResource ComboStyle}" ItemsSource="{Binding Subjects}"
-                                                      SelectedItem="{Binding SelectedSubject}" DisplayMemberPath="DisplayName" />
-                                            <TextBlock Grid.Column="2" Text="{Binding RecordingCountText}" FontSize="16" HorizontalAlignment="Right"
+                                            <TextBlock Grid.Column="1" Text="{Binding RecordingCountText}" FontSize="16" HorizontalAlignment="Right"
                                                        VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
                                         </Grid>
                                     </Border>
@@ -133,61 +132,100 @@
                 </Border>
 
                 <!-- Modelo -->
-                <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="28,24" VerticalAlignment="Top">
-                    <StackPanel>
-                        <TextBlock Text="Modelo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,16" />
-                        <StackPanel IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}">
-                            <TextBlock Text="ALGORITMO" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,6" />
-                            <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Algorithms}"
-                                      SelectedItem="{Binding SelectedAlgorithm}" DisplayMemberPath="DisplayName" />
+                <StackPanel Grid.Column="2" VerticalAlignment="Top">
+                    <Border Style="{StaticResource CardStyle}" Padding="28,24">
+                        <StackPanel>
+                            <TextBlock Text="Modelo" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,16" />
+                            <StackPanel IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}">
+                                <TextBlock Text="ALGORITMO" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,6" />
+                                <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Algorithms}"
+                                          SelectedItem="{Binding SelectedAlgorithm}" DisplayMemberPath="DisplayName" />
 
-                            <TextBlock Text="NOMBRE DEL ARCHIVO" Style="{StaticResource FieldLabelStyle}" Margin="0,18,0,6" />
-                            <DockPanel>
-                                <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Width="76" Margin="10,0,0,0"
-                                        Content="{Binding EditModelNameText}" Command="{Binding ToggleEditModelNameCommand}"
-                                        ToolTip="Cambiar el nombre automático" />
-                                <TextBox Style="{StaticResource InputStyle}" Tag="{Binding SuggestedModelName}"
-                                         IsReadOnly="{Binding IsEditingModelName, Converter={StaticResource InverseBool}}"
-                                         Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding ModelName}" />
-                            </DockPanel>
-                            <TextBlock Style="{StaticResource HintTextStyle}"
-                                       Text="Automático: prefijo y nombre del sujeto más el algoritmo. Al editar, déjalo vacío para volver a él. Se guarda como .pkl en artifacts/models." />
-                            <TextBlock Text="{Binding ModelNameWarning}" Style="{StaticResource WarningTextStyle}" />
+                                <TextBlock Text="NOMBRE DEL ARCHIVO" Style="{StaticResource FieldLabelStyle}" Margin="0,18,0,6" />
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Width="76" Margin="10,0,0,0"
+                                            Content="{Binding EditModelNameText}" Command="{Binding ToggleEditModelNameCommand}"
+                                            ToolTip="Cambiar el nombre automático" />
+                                    <TextBox Style="{StaticResource InputStyle}" Tag="{Binding SuggestedModelName}"
+                                             IsReadOnly="{Binding IsEditingModelName, Converter={StaticResource InverseBool}}"
+                                             Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding ModelName}" />
+                                </DockPanel>
+                                <TextBlock Style="{StaticResource HintTextStyle}"
+                                           Text="Automático: prefijo y nombre del sujeto más el algoritmo. Al editar, déjalo vacío para volver a él. Se guarda como .pkl en la carpeta modelos del sujeto." />
+                                <TextBlock Text="{Binding ModelNameWarning}" Style="{StaticResource WarningTextStyle}" />
+                            </StackPanel>
+
+                            <UniformGrid Columns="2" Margin="0,18,0,0">
+                                <Border Style="{StaticResource TileStyle}" Margin="0,0,5,0">
+                                    <StackPanel>
+                                        <TextBlock Text="ESTADO" Style="{StaticResource TileLabelStyle}" />
+                                        <TextBlock>
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource TileValueStyle}">
+                                                    <Setter Property="Text" Value="Sin entrenar" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status.IsModelReady}" Value="True">
+                                                            <Setter Property="Text" Value="Listo" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource TileStyle}" Margin="5,0,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="EXACTITUD" Style="{StaticResource TileLabelStyle}" />
+                                        <TextBlock Text="{Binding AccuracyText}" Style="{StaticResource TileValueStyle}" />
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+
+                            <TextBlock Text="{Binding TrainedClassesText}" Style="{StaticResource HintTextStyle}" Margin="0,14,0,0" />
+                            <TextBlock Style="{StaticResource HintTextStyle}" Margin="0,14,0,0"
+                                       Text="La exactitud sale de una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto." />
                         </StackPanel>
+                    </Border>
 
-                        <UniformGrid Columns="2" Margin="0,18,0,0">
-                            <Border Style="{StaticResource TileStyle}" Margin="0,0,5,0">
-                                <StackPanel>
-                                    <TextBlock Text="ESTADO" Style="{StaticResource TileLabelStyle}" />
-                                    <TextBlock>
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource TileValueStyle}">
-                                                <Setter Property="Text" Value="Sin entrenar" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Status.IsModelReady}" Value="True">
-                                                        <Setter Property="Text" Value="Listo" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource TileStyle}" Margin="5,0,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="EXACTITUD" Style="{StaticResource TileLabelStyle}" />
-                                    <TextBlock Text="{Binding AccuracyText}" Style="{StaticResource TileValueStyle}" />
-                                </StackPanel>
-                            </Border>
-                        </UniformGrid>
-
-                        <TextBlock Text="{Binding TrainedClassesText}" Style="{StaticResource HintTextStyle}" Margin="0,14,0,0" />
-                        <TextBlock Style="{StaticResource HintTextStyle}" Margin="0,14,0,0"
-                                   Text="«Todos los sujetos» usa las carpetas de cada sujeto y también las grabaciones anteriores que no tienen sujeto." />
-                        <TextBlock Style="{StaticResource HintTextStyle}"
-                                   Text="La exactitud sale de una división aleatoria de ventanas; no es una evaluación por sesión ni por sujeto." />
-                    </StackPanel>
-                </Border>
+                    <!-- Modelos del sujeto -->
+                    <Border Style="{StaticResource CardStyle}" Padding="28,24" Margin="0,24,0,0">
+                        <StackPanel>
+                            <TextBlock Text="{Binding SubjectModelsTitle}" Style="{StaticResource CardTitleStyle}" Margin="0,0,0,12" />
+                            <TextBlock Text="Este sujeto aún no tiene modelos.">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource HintTextStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasSubjectModels}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <ItemsControl ItemsSource="{Binding SubjectModels}" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ModelItemViewModel}">
+                                        <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" Padding="0,10">
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource LinkButtonStyle}" Content="Eliminar"
+                                                        VerticalAlignment="Center" Margin="12,0,0,0" ToolTip="Eliminar este modelo"
+                                                        Command="{Binding DataContext.DeleteModelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" />
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}" />
+                                                    <TextBlock Text="{Binding DetailText}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                               TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </Grid>
         </Grid>
     </ScrollViewer>

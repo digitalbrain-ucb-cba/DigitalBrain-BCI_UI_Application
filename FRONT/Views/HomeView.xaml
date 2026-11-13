@@ -8,6 +8,43 @@
              d:DataContext="{d:DesignInstance Type=vm:HomeViewModel}"
              d:DesignWidth="1400" d:DesignHeight="850">
 
+    <UserControl.Resources>
+        <!-- Distintivo de estado de un paso: «Hecho», «Siguiente paso», «Pendiente» o «En curso» -->
+        <DataTemplate DataType="{x:Type vm:StepStatus}">
+            <Border x:Name="Badge" Background="{DynamicResource TileBackgroundBrush}" BorderBrush="Transparent" BorderThickness="1"
+                    CornerRadius="12" Padding="12,5" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="Dot" Width="7" Height="7" Fill="{StaticResource StatusIdleBrush}" Margin="0,0,7,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="Label" Text="{Binding Text}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsDone}" Value="True">
+                    <Setter TargetName="Dot" Property="Fill" Value="{StaticResource StatusActiveBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsNext}" Value="True">
+                    <Setter TargetName="Badge" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                    <Setter TargetName="Dot" Property="Fill" Value="{DynamicResource AccentBrush}" />
+                    <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Número del paso; se resalta si es el siguiente (Tag = StepStatus) -->
+        <Style x:Key="StepNumberStyle" TargetType="Border">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="17" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Background" Value="{DynamicResource SectionLabelBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tag.IsNext, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <Grid Margin="40,36,40,36">
             <Grid.RowDefinitions>
@@ -16,60 +53,8 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Encabezado con chips de estado -->
+            <!-- Encabezado -->
             <DockPanel Grid.Row="0">
-                <!-- Bloque derecho: chips de estado -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,0">
-                    <!-- Chip 1: Casco EEG -->
-                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                            CornerRadius="16" Padding="14,7" Margin="0,0,10,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource StatusActiveBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="Casco EEG conectado" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Chip 2: Modelo -->
-                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                            CornerRadius="16" Padding="14,7" Margin="0,0,10,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
-                                <Ellipse.Style>
-                                    <Style TargetType="Ellipse">
-                                        <Setter Property="Fill" Value="{StaticResource StatusIdleBrush}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Status.IsModelReady}" Value="True">
-                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Ellipse.Style>
-                            </Ellipse>
-                            <TextBlock FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="Modelo cargado" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Status.IsModelReady}" Value="False">
-                                                <Setter Property="Text" Value="Modelo pendiente" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Chip 3: Robot UGOT -->
-                    <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                            CornerRadius="16" Padding="14,7">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource StatusActiveBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="Robot UGOT conectado" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
                 <!-- Título y subtítulo -->
                 <StackPanel>
                     <TextBlock Text="PANEL PRINCIPAL" Style="{StaticResource SectionLabelStyle}" />
@@ -99,11 +84,11 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                             <Ellipse Width="8" Height="8" Fill="{DynamicResource Channel1Brush}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="CANALES ACTIVOS" Style="{StaticResource TileLabelStyle}" />
+                            <TextBlock Text="CANALES" Style="{StaticResource TileLabelStyle}" />
                         </StackPanel>
-                        <TextBlock Text="{Binding ActiveChannelsText}" FontFamily="{StaticResource DisplayFont}" FontSize="28" FontWeight="Bold"
+                        <TextBlock Text="{Binding ChannelsText}" FontFamily="{StaticResource DisplayFont}" FontSize="28" FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}" />
-                        <TextBlock Text="{Binding ActiveChannelsDetail}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0"
+                        <TextBlock Text="{Binding ChannelsDetail}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0"
                                    TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </Border>
@@ -130,7 +115,7 @@
                                      Height="42"
                                      MinHeight="42"
                                      Padding="10,0"
-                                     ToolTip="Escribe la frecuencia de muestreo en Hz (ej. 125, 250, 500). El cambio actualiza el ventaneo y los cálculos en todo el sistema." />
+                                     ToolTip="Frecuencia de muestreo en Hz (ej. 125, 250, 500). Fija el tamaño de ventana al crear datasets y al predecir; un modelo debe usarse con la frecuencia con que se entrenó." />
                         </DockPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                             <Button Style="{StaticResource LinkButtonStyle}" Content="125" Command="{Binding SetPresetSampleRateCommand}" CommandParameter="125"
@@ -163,8 +148,19 @@
                 <Border Grid.Column="6" Style="{StaticResource CardStyle}" Padding="20,18">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <Ellipse Width="8" Height="8" Fill="{StaticResource StatusActiveBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                            <TextBlock Text="ESTADO DISPOSITIVO" Style="{StaticResource TileLabelStyle}" />
+                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource StatusIdleBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDeviceReady}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="CAPTURADOR" Style="{StaticResource TileLabelStyle}" />
                         </StackPanel>
                         <TextBlock Text="{Binding DeviceStatusText}" FontFamily="{StaticResource DisplayFont}" FontSize="28" FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}" />
@@ -192,7 +188,8 @@
                             <TextBlock Text="MODELO ACTIVO" Style="{StaticResource TileLabelStyle}" />
                         </StackPanel>
                         <TextBlock Text="{Binding ModelStatusText}" FontFamily="{StaticResource DisplayFont}" FontSize="20" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" Margin="0,6,0,0" />
+                                   Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" Margin="0,6,0,0"
+                                   ToolTip="{Binding ModelStatusText}" />
                         <TextBlock Text="{Binding ModelStatusDetail}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0"
                                    TextTrimming="CharacterEllipsis" />
                     </StackPanel>
@@ -222,19 +219,14 @@
                         <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
                             <TextBlock DockPanel.Dock="Right" Text="ConDumpAuto.exe" FontFamily="{StaticResource MonoFont}" FontSize="12.5"
                                        Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding RecordingsSummary}" FontSize="13.5" FontWeight="SemiBold"
+                            <TextBlock Text="{Binding CaptureSummary}" FontSize="13.5" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         </DockPanel>
 
-                        <!-- Cabecera de la tarjeta: Badge 1 y estado Hecho -->
+                        <!-- Cabecera de la tarjeta: número y estado del paso -->
                         <DockPanel DockPanel.Dock="Top">
-                            <Border DockPanel.Dock="Right" Background="{DynamicResource TileBackgroundBrush}" CornerRadius="12" Padding="12,5" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="7" Height="7" Fill="{StaticResource StatusActiveBrush}" Margin="0,0,7,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="Hecho" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource SectionLabelBrush}" HorizontalAlignment="Left">
+                            <ContentControl DockPanel.Dock="Right" Content="{Binding CaptureStep}" Focusable="False" />
+                            <Border Style="{StaticResource StepNumberStyle}" Tag="{Binding CaptureStep}">
                                 <TextBlock Text="1" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                         </DockPanel>
@@ -242,7 +234,7 @@
                         <!-- Textos principales -->
                         <StackPanel Margin="0,16,0,0">
                             <TextBlock Text="Capturar señales" Style="{StaticResource CardTitleStyle}" />
-                            <TextBlock Text="Ponte el casco EEG y graba varias repeticiones de cada movimiento." FontSize="15"
+                            <TextBlock Text="Ponte el casco EEG y graba varias repeticiones de cada movimiento por sujeto." FontSize="15"
                                        Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0" TextWrapping="Wrap" LineHeight="22" />
                         </StackPanel>
                     </DockPanel>
@@ -254,26 +246,21 @@
                         <!-- Botón inferior: redirige a la pestaña Entrenar -->
                         <Button DockPanel.Dock="Bottom" Style="{StaticResource OutlineButtonStyle}" Command="{Binding NavigateTrainingCommand}"
                                 Margin="0,20,0,0" HorizontalAlignment="Stretch">
-                            <TextBlock Text="Volver a entrenar" />
+                            <TextBlock Text="{Binding TrainingButtonText}" />
                         </Button>
 
                         <!-- Barra de sub-información -->
                         <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
                             <TextBlock DockPanel.Dock="Right" Text="training.py" FontFamily="{StaticResource MonoFont}" FontSize="12.5"
                                        Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="Acierta 97 de cada 100 pruebas" FontSize="13.5" FontWeight="SemiBold"
+                            <TextBlock Text="{Binding TrainingSummary}" FontSize="13.5" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         </DockPanel>
 
-                        <!-- Cabecera de la tarjeta: Badge 2 y estado Hecho -->
+                        <!-- Cabecera de la tarjeta: número y estado del paso -->
                         <DockPanel DockPanel.Dock="Top">
-                            <Border DockPanel.Dock="Right" Background="{DynamicResource TileBackgroundBrush}" CornerRadius="12" Padding="12,5" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="7" Height="7" Fill="{StaticResource StatusActiveBrush}" Margin="0,0,7,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="Hecho" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource SectionLabelBrush}" HorizontalAlignment="Left">
+                            <ContentControl DockPanel.Dock="Right" Content="{Binding TrainingStep}" Focusable="False" />
+                            <Border Style="{StaticResource StepNumberStyle}" Tag="{Binding TrainingStep}">
                                 <TextBlock Text="2" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                         </DockPanel>
@@ -281,7 +268,7 @@
                         <!-- Textos principales -->
                         <StackPanel Margin="0,16,0,0">
                             <TextBlock Text="Entrenar el modelo" Style="{StaticResource CardTitleStyle}" />
-                            <TextBlock Text="El sistema aprende a diferenciar tus movimientos usando las grabaciones." FontSize="15"
+                            <TextBlock Text="El sistema aprende a diferenciar los movimientos de un sujeto con sus grabaciones." FontSize="15"
                                        Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0" TextWrapping="Wrap" LineHeight="22" />
                         </StackPanel>
                     </DockPanel>
@@ -293,35 +280,29 @@
                         <!-- Botón inferior: redirige a Tiempo real -->
                         <Button DockPanel.Dock="Bottom" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding NavigateRealtimeCommand}"
                                 Margin="0,20,0,0" HorizontalAlignment="Stretch">
-                            <TextBlock Text="Empezar ahora" />
+                            <TextBlock Text="Ir a Tiempo real" />
                         </Button>
 
                         <!-- Barra de sub-información -->
                         <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
                             <TextBlock DockPanel.Dock="Right" Text="realtime.py" FontFamily="{StaticResource MonoFont}" FontSize="12.5"
                                        Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="Casco, modelo y robot listos" FontSize="13.5" FontWeight="SemiBold"
+                            <TextBlock Text="{Binding RealtimeSummary}" FontSize="13.5" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         </DockPanel>
 
-                        <!-- Cabecera de la tarjeta: Badge 3 y estado Siguiente paso -->
+                        <!-- Cabecera de la tarjeta: número y estado del paso -->
                         <DockPanel DockPanel.Dock="Top">
-                            <Border DockPanel.Dock="Right" Background="{DynamicResource TileBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}"
-                                    BorderThickness="1" CornerRadius="12" Padding="12,5" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentBrush}" Margin="0,0,7,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="Siguiente paso" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentBrush}" HorizontalAlignment="Left">
+                            <ContentControl DockPanel.Dock="Right" Content="{Binding RealtimeStep}" Focusable="False" />
+                            <Border Style="{StaticResource StepNumberStyle}" Tag="{Binding RealtimeStep}">
                                 <TextBlock Text="3" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                         </DockPanel>
 
                         <!-- Textos principales -->
                         <StackPanel Margin="0,16,0,0">
-                            <TextBlock Text="Controlar el robot" Style="{StaticResource CardTitleStyle}" />
-                            <TextBlock Text="Imagina o ejecuta el movimiento y el robot UGOT se desplaza en tiempo real." FontSize="15"
+                            <TextBlock Text="Predecir en tiempo real" Style="{StaticResource CardTitleStyle}" />
+                            <TextBlock Text="Imagina o ejecuta el movimiento y el modelo lo clasifica en vivo. El envío al robot UGOT aún no está conectado." FontSize="15"
                                        Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0" TextWrapping="Wrap" LineHeight="22" />
                         </StackPanel>
                     </DockPanel>

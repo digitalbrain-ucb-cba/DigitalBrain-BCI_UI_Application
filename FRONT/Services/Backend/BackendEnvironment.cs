@@ -19,12 +19,7 @@ public sealed class BackendEnvironment : IBackendEnvironment
     public string PythonExecutable { get; }
     public string DataRoot => Path.Combine(BackendRoot, "datos");
     public string DatasetsDirectory => Path.Combine(BackendRoot, "artifacts", "datasets");
-    public string ModelsDirectory => Path.Combine(BackendRoot, "artifacts", "models");
-
-    public IReadOnlyList<string> GetModelFiles() =>
-        Directory.Exists(ModelsDirectory)
-            ? Directory.EnumerateFiles(ModelsDirectory, "*.pkl").OrderByDescending(File.GetLastWriteTimeUtc).ToList()
-            : [];
+    public string LegacyModelsDirectory => Path.Combine(BackendRoot, "artifacts", "models");
 
     public string Resolve(string path)
     {

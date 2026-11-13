@@ -233,6 +233,35 @@ class StopTests(unittest.TestCase):
         self.assertEqual(messages, ["sin casco"])
 
 
+class SampleRateTests(unittest.TestCase):
+    def test_windows_last_one_second_at_the_chosen_rate(self) -> None:
+        extractor = cli._extractor(250)
+        self.assertEqual((extractor.window_size, extractor.default_step), (250, 125))
+        self.assertEqual(cli._extractor(125).window_size, 125)
+
+    def test_build_dataset_uses_the_sample_rate_argument(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            (directory / "captura.txt").write_text("\n".join(f"{i},1,2,3" for i in range(500)), encoding="utf-8")
+            output = directory / "out.csv"
+            for rate, expected in (("125", 6), ("250", 3)):
+                arguments = ["digital-brain", "build-dataset", str(directory), str(output), "x", "--sample-rate", rate]
+                with self.subTest(rate=rate), patch("sys.argv", arguments), redirect_stdout(StringIO()):
+                    cli.main()
+                    self.assertEqual(len(pd.read_csv(output)), expected)
+
+    def test_predict_uses_the_sample_rate_argument(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            (directory / "ConDumpAuto.exe").touch()
+            arguments = ["digital-brain", "predict", str(directory), str(directory / "m.pkl"), "--sample-rate", "250"]
+            with patch("sys.argv", arguments), patch.object(cli, "RealtimeClassifier") as classifier:
+                classifier.return_value.predict_windows.return_value = iter([])
+                with patch.object(ExecutableCapture, "stream_samples", return_value=iter([])), redirect_stdout(StringIO()):
+                    cli.main()
+            self.assertEqual(classifier.call_args.args[1].window_size, 250)
+
+
 class PredictCliTests(unittest.TestCase):
     def test_predict_prints_one_labelled_line_per_window_until_interrupted(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

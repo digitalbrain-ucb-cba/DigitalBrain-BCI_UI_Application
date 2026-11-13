@@ -7,4 +7,6 @@ public interface IDialogService
     string? PickModel(string? initialPath);
     string? PickFolder(string? initialPath);
     void OpenFolder(string path);
+    /// <summary>Pregunta sí o no; devuelve <c>true</c> si el usuario acepta.</summary>
+    bool Confirm(string title, string message);
 }

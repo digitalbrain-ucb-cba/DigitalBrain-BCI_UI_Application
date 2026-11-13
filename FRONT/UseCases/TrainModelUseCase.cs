@@ -5,88 +5,70 @@ using DigitalBrain.UI.Services.Backend;
 namespace DigitalBrain.UI.UseCases;
 
 /// <summary>
-/// Caso de uso «entrenar modelo»: para cada movimiento elegido crea un CSV por carpeta de capturas
-/// (la del sujeto elegido o la de cada sujeto) con <c>build-dataset</c> y entrena un único modelo con todos ellos (<c>train</c>).
+/// Caso de uso «entrenar modelo»: crea un CSV por cada movimiento elegido del sujeto con <c>build-dataset</c>,
+/// entrena un único modelo con todos ellos (<c>train</c>) y lo guarda en la carpeta de modelos del sujeto.
 /// </summary>
 public sealed class TrainModelUseCase(
     IBackendBridge backend,
     IDataCatalog catalog,
     IRecordingRepository recordings,
+    IModelStore models,
     IBackendEnvironment environment)
 {
     /// <summary>La división estratificada de <c>train</c> necesita al menos dos ventanas por clase.</summary>
     public const int MinimumWindowsPerMovement = 2;
 
     public async Task<TrainModelResult> ExecuteAsync(
-        IReadOnlyList<TrainingSelection> selections,
-        string modelPath,
+        string subject,
+        IReadOnlyList<MovementClass> movements,
+        string modelName,
         string algorithm,
         IProgress<string>? progress = null)
     {
-        if (selections.Select(s => s.Movement.Label).Distinct().Count() < 2)
+        movements = movements.DistinctBy(m => m.Label).ToList();
+        if (movements.Count < 2)
             return TrainModelResult.Failure("Elige al menos dos movimientos para entrenar.");
 
-        var sources = new List<(TrainingSelection Selection, IReadOnlyList<string> Directories)>();
-        foreach (var selection in selections)
+        foreach (var movement in movements)
         {
-            var directories = catalog.RecordingDirectories(selection.Movement, selection.Subject);
-            if (directories.Count == 0)
-                return TrainModelResult.Failure($"No hay capturas de {selection.Description}.");
-            sources.Add((selection, directories));
-        }
+            if (catalog.CountRecordings(subject, movement) == 0)
+                return TrainModelResult.Failure($"{subject} no tiene grabaciones de {movement.DisplayName}.");
 
-        // Una grabación corta o saturada genera un CSV vacío sin error, y luego train falla con un mensaje poco claro:
-        // se comprueba antes con las mismas reglas de ventaneo que build-dataset.
-        foreach (var (selection, directories) in sources)
-        {
+            // Una grabación corta o saturada genera un CSV vacío sin error, y luego train falla con un mensaje poco claro:
+            // se comprueba antes con las mismas reglas de ventaneo que build-dataset.
             var windows = 0;
-            foreach (var file in directories.SelectMany(d => Directory.EnumerateFiles(d, "*.txt")))
+            foreach (var file in Directory.EnumerateFiles(catalog.MovementDirectory(subject, movement), "*.txt"))
                 windows += (await recordings.AnalyzeAsync(file))?.Windows ?? 0;
             if (windows < MinimumWindowsPerMovement)
                 return TrainModelResult.Failure(
-                    $"Las grabaciones de {selection.Description} solo dan {windows} ventanas: cada archivo necesita al menos " +
+                    $"Las grabaciones de {movement.DisplayName} de {subject} solo dan {windows} ventanas: cada archivo necesita al menos " +
                     $"{AcquisitionParameters.WindowSize} muestras válidas ({AcquisitionParameters.WindowSize / AcquisitionParameters.SampleRateHz:0.#} s sin saturar). " +
-                    "Graba más tiempo o elige otro sujeto.");
+                    "Graba más tiempo.");
         }
 
         var datasets = new List<string>();
-        foreach (var (selection, directories) in sources)
+        foreach (var movement in movements)
         {
-            progress?.Report($"Preparando dataset de {selection.Description}…");
-            foreach (var directory in directories)
-            {
-                var csvPath = Path.Combine(environment.DatasetsDirectory, DatasetFileName(selection.Movement, directory));
-                if (!await backend.BuildDatasetAsync(directory, csvPath, selection.Movement.Label, progress))
-                    return TrainModelResult.Failure($"No se pudo crear el dataset de {directory}: {backend.LastError ?? "error desconocido"}");
-                datasets.Add(csvPath);
-            }
+            progress?.Report($"Preparando dataset de {movement.DisplayName}…");
+            var csvPath = Path.Combine(environment.DatasetsDirectory, $"{subject}__{movement.Label}.csv");
+            if (!await backend.BuildDatasetAsync(catalog.MovementDirectory(subject, movement), csvPath, movement.Label, progress))
+                return TrainModelResult.Failure($"No se pudo crear el dataset de {movement.DisplayName}: {backend.LastError ?? "error desconocido"}");
+            datasets.Add(csvPath);
         }
 
         progress?.Report("Entrenando modelo…");
+        var modelPath = models.ModelPath(subject, modelName);
         var result = await backend.TrainModelAsync(modelPath, datasets, algorithm, progress);
-        return result is null
-            ? TrainModelResult.Failure(backend.LastError is { } error
+        if (result is null)
+        {
+            return TrainModelResult.Failure(backend.LastError is { } error
                 ? $"El entrenamiento falló: {error}"
-                : "El entrenamiento falló; revisa que el entorno de Python tenga el paquete digital_brain instalado.")
-            : TrainModelResult.Success(result, selections.Select(s => s.Movement).DistinctBy(m => m.Label).ToList());
-    }
+                : "El entrenamiento falló; revisa que el entorno de Python tenga el paquete digital_brain instalado.");
+        }
 
-    /// <summary><c>&lt;etiqueta&gt;__&lt;sujeto&gt;.csv</c>, o <c>__anteriores</c> para las capturas sueltas en la carpeta del movimiento.</summary>
-    private string DatasetFileName(MovementClass movement, string directory)
-    {
-        var isMovementFolder = string.Equals(Path.TrimEndingDirectorySeparator(directory), catalog.MovementDirectory(movement),
-            StringComparison.OrdinalIgnoreCase);
-        var suffix = isMovementFolder ? "anteriores" : Path.GetFileName(Path.TrimEndingDirectorySeparator(directory));
-        return $"{movement.Label}__{suffix}.csv";
+        models.SaveInfo(new ModelInfo(modelPath, subject, algorithm, result.Accuracy, result.CompletedAt, movements.Select(m => m.Label).ToList()));
+        return TrainModelResult.Success(result, movements);
     }
-}
-
-/// <param name="Subject">Sujeto cuyas capturas se usan, o <c>null</c> para todos.</param>
-public sealed record TrainingSelection(MovementClass Movement, string? Subject)
-{
-    public string Description => Subject is null
-        ? $"{Movement.DisplayName} (todos los sujetos)"
-        : $"{Movement.DisplayName} · {Subject}";
 }
 
 public sealed record TrainModelResult(bool Succeeded, TrainingResult? Training, IReadOnlyList<MovementClass> Classes, string? Error)

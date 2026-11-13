@@ -20,6 +20,7 @@ def main() -> None:
     dataset_command.add_argument("input_directory", type=Path)
     dataset_command.add_argument("output_path", type=Path)
     dataset_command.add_argument("label")
+    dataset_command.add_argument("--sample-rate", type=float, default=125.0, help="Hz; la ventana dura 1 s (por defecto: 125).")
     train_command = commands.add_parser("train")
     train_command.add_argument("model_path", type=Path)
     train_command.add_argument("datasets", type=Path, nargs="+")
@@ -51,9 +52,10 @@ def main() -> None:
         default="ConDumpAuto.exe",
         help="Nombre del ejecutable dentro de la carpeta (por defecto: ConDumpAuto.exe).",
     )
+    predict_command.add_argument("--sample-rate", type=float, default=125.0, help="Hz; debe ser la del entrenamiento (por defecto: 125).")
     arguments = parser.parse_args()
     if arguments.command == "build-dataset":
-        dataset = build_dataset(arguments.input_directory, arguments.output_path, arguments.label, SpectralFeatureExtractor())
+        dataset = build_dataset(arguments.input_directory, arguments.output_path, arguments.label, _extractor(arguments.sample_rate))
         print(f"Dataset creado: {arguments.output_path} ({len(dataset)} filas)")
     elif arguments.command == "capture":
         try:
@@ -69,7 +71,7 @@ def main() -> None:
     elif arguments.command == "predict":
         try:
             executable_path = _resolve_capture_executable(arguments.program_directory, arguments.executable_name)
-            classifier = RealtimeClassifier(arguments.model_path, SpectralFeatureExtractor())
+            classifier = RealtimeClassifier(arguments.model_path, _extractor(arguments.sample_rate))
         except (NotADirectoryError, FileNotFoundError, ValueError) as error:
             predict_command.error(str(error))
         try:
@@ -87,6 +89,11 @@ def main() -> None:
     else:
         score = train_classifier(arguments.datasets, arguments.model_path, algorithm=arguments.algorithm)
         print(f"Modelo {arguments.algorithm} guardado en {arguments.model_path}; exactitud: {score:.3f}")
+
+
+def _extractor(sample_rate_hz: float) -> SpectralFeatureExtractor:
+    """Ventanas de un segundo a la frecuencia indicada, como calcula la interfaz."""
+    return SpectralFeatureExtractor(sample_rate_hz=sample_rate_hz, window_size=max(1, round(sample_rate_hz)))
 
 
 def _stop_when_requested(capture: ExecutableCapture) -> None:

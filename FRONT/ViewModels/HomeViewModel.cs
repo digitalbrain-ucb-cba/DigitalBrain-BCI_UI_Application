@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -7,24 +8,37 @@ using DigitalBrain.UI.UseCases.Ports;
 
 namespace DigitalBrain.UI.ViewModels;
 
+/// <summary>Estado de un paso del flujo en la pantalla de inicio.</summary>
+/// <param name="IsNext">Es el paso que conviene hacer ahora: se resalta.</param>
+public sealed record StepStatus(string Text, bool IsDone, bool IsNext)
+{
+    public static StepStatus Done { get; } = new("Hecho", true, false);
+    public static StepStatus Next { get; } = new("Siguiente paso", false, true);
+    public static StepStatus Pending { get; } = new("Pendiente", false, false);
+    public static StepStatus Running { get; } = new("En curso", true, false);
+}
+
 /// <summary>
-/// Pantalla «Inicio» (Resumen del sistema): presenta el flujo biomédico de extremo a extremo,
-/// indicadores clave de adquisición, configuración global de frecuencia de muestreo y accesos directos al flujo de trabajo.
+/// Pantalla «Inicio»: resumen del sistema calculado con lo que hay en disco (grabaciones, sujetos y modelos), el estado del
+/// capturador, la frecuencia de muestreo global y en qué paso del flujo está el trabajo.
 /// </summary>
 public partial class HomeViewModel : BaseViewModel
 {
+    private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-ES");
+
     private readonly INavigationService _navigationService;
     private readonly IRecordingRepository _recordings;
     private readonly IDataCatalog _catalog;
-    private readonly IBackendEnvironment _environment;
+    private readonly IModelStore _models;
     private readonly ISettingsStore _settings;
+    private bool _hasRecordings;
 
     public HomeViewModel(
         INavigationService navigationService,
         SystemStatusViewModel status,
         IRecordingRepository recordings,
         IDataCatalog catalog,
-        IBackendEnvironment environment,
+        IModelStore models,
         ISettingsStore settings)
     {
         Title = "Inicio";
@@ -32,74 +46,80 @@ public partial class HomeViewModel : BaseViewModel
         Status = status;
         _recordings = recordings;
         _catalog = catalog;
-        _environment = environment;
+        _models = models;
         _settings = settings;
 
-        // Cargar frecuencia inicial persistida o actual
         var savedRate = settings.Load().SampleRateHz;
         if (savedRate > 0)
-        {
             AcquisitionParameters.SampleRateHz = savedRate;
-        }
 
-        _sampleRateInput = AcquisitionParameters.SampleRateHz.ToString("0");
-        _sampleRateText = $"{AcquisitionParameters.SampleRateHz:0} Hz";
-        _sampleRateDetail = $"Una muestra cada {(1000.0 / AcquisitionParameters.SampleRateHz):0.#} ms";
-
+        _sampleRateInput = AcquisitionParameters.SampleRateHz.ToString("0", CultureInfo.InvariantCulture);
+        UpdateSampleRateTexts();
         AcquisitionParameters.SampleRateChanged += () =>
         {
-            var rate = AcquisitionParameters.SampleRateHz;
-            SampleRateText = $"{rate:0} Hz";
-            SampleRateDetail = $"Una muestra cada {(1000.0 / rate):0.#} ms";
-            if (SampleRateInput != rate.ToString("0"))
-            {
-                SampleRateInput = rate.ToString("0");
-            }
+            UpdateSampleRateTexts();
+            var text = AcquisitionParameters.SampleRateHz.ToString("0", CultureInfo.InvariantCulture);
+            if (SampleRateInput != text) SampleRateInput = text;
         };
-
-        _ = LoadAsync();
+        Status.PropertyChanged += OnStatusChanged;
+        UpdateDevice();
     }
 
     public SystemStatusViewModel Status { get; }
 
-    // ---- Indicadores principales (KPIs) ----
-    [ObservableProperty] private string _activeChannelsText = $"{AcquisitionParameters.ChannelNames.Count} / {AcquisitionParameters.ChannelNames.Count}";
-    [ObservableProperty] private string _activeChannelsDetail = "A, B, C y D · 4 canales";
+    // ---- Indicadores ----
+    public string ChannelsText { get; } = AcquisitionParameters.ChannelNames.Count.ToString(CultureInfo.InvariantCulture);
+    public string ChannelsDetail { get; } = $"{string.Join(", ", AcquisitionParameters.ChannelNames.SkipLast(1))} y {AcquisitionParameters.ChannelNames[^1]}";
 
     [ObservableProperty] private string _sampleRateInput;
-    [ObservableProperty] private string _sampleRateText;
-    [ObservableProperty] private string _sampleRateDetail;
+    [ObservableProperty] private string _sampleRateText = "";
+    [ObservableProperty] private string _sampleRateDetail = "";
 
-    [ObservableProperty] private string _featuresText = "16 por ventana";
-    [ObservableProperty] private string _featuresDetail = "4 bandas × 4 canales";
-    [ObservableProperty] private string _deviceStatusText = "Listo";
-    [ObservableProperty] private string _deviceStatusDetail = "ConDumpAuto · Puerto USB";
-    [ObservableProperty] private string _modelStatusText = "ModelMotores.pkl";
-    [ObservableProperty] private string _modelStatusDetail = "Random Forest · 16 feat";
-    [ObservableProperty] private string _modelAccuracyText = "96,8 %";
-    [ObservableProperty] private string _modelAccuracyDetail = "Validado por grabación";
-    [ObservableProperty] private string _responseTimeText = "0,5 s";
-    [ObservableProperty] private string _responseTimeDetail = "Nueva decisión cada 63 muestras";
+    public string FeaturesText { get; } = $"{AcquisitionParameters.ChannelNames.Count * 4} por ventana";
+    public string FeaturesDetail { get; } = $"4 bandas × {AcquisitionParameters.ChannelNames.Count} canales";
 
-    // ---- Datos dinámicos del flujo ----
-    [ObservableProperty] private string _recordingsSummary = "50 grabaciones · 3 movimientos";
-    [ObservableProperty] private int _recordingsCount = 50;
+    [ObservableProperty] private string _deviceStatusText = "";
+    [ObservableProperty] private string _deviceStatusDetail = "";
+    [ObservableProperty] private bool _isDeviceReady;
+
+    [ObservableProperty] private string _modelStatusText = "Sin entrenar";
+    [ObservableProperty] private string _modelStatusDetail = "Pendiente de entrenamiento";
+
+    // ---- Pasos del flujo ----
+    [ObservableProperty] private string _captureSummary = "";
+    [ObservableProperty] private StepStatus _captureStep = StepStatus.Next;
+    [ObservableProperty] private string _trainingSummary = "";
+    [ObservableProperty] private StepStatus _trainingStep = StepStatus.Pending;
+    [ObservableProperty] private string _trainingButtonText = "Entrenar modelo";
+    [ObservableProperty] private string _realtimeSummary = "";
+    [ObservableProperty] private StepStatus _realtimeStep = StepStatus.Pending;
     [ObservableProperty] private bool _hasTrainedModel;
+
+    public override void OnNavigatedTo() => _ = LoadAsync();
 
     partial void OnSampleRateInputChanged(string value)
     {
-        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var rate) ||
-            double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out rate))
+        if ((double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var rate) ||
+             double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out rate)) && rate is >= 1 and <= 10000)
         {
-            if (rate is >= 1 and <= 10000)
-            {
-                AcquisitionParameters.SampleRateHz = rate;
-                SampleRateText = $"{rate:0} Hz";
-                SampleRateDetail = $"Una muestra cada {(1000.0 / rate):0.#} ms";
+            AcquisitionParameters.SampleRateHz = rate;
+            _settings.Save(_settings.Load() with { SampleRateHz = rate });
+        }
+    }
 
-                var current = _settings.Load();
-                _settings.Save(current with { SampleRateHz = rate });
-            }
+    private void UpdateSampleRateTexts()
+    {
+        var rate = AcquisitionParameters.SampleRateHz;
+        SampleRateText = $"{rate:0} Hz";
+        SampleRateDetail = $"Una muestra cada {(1000.0 / rate).ToString("0.#", Es)} ms";
+    }
+
+    private void OnStatusChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(SystemStatusViewModel.IsCapturing) or nameof(SystemStatusViewModel.IsPredicting) or nameof(SystemStatusViewModel.IsTraining))
+        {
+            UpdateDevice();
+            UpdateSteps();
         }
     }
 
@@ -108,33 +128,74 @@ public partial class HomeViewModel : BaseViewModel
         try
         {
             var count = await _recordings.CountAsync();
-            RecordingsCount = count;
             Status.RecordingCount = count;
+            var subjects = _catalog.GetSubjects();
+            var movements = _catalog.GetMovements().Count(m => subjects.Any(s => _catalog.CountRecordings(s, m) > 0));
+            _hasRecordings = count > 0;
+            CaptureSummary = count > 0
+                ? $"{Plural(count, "grabación", "grabaciones")} · {Plural(subjects.Count, "sujeto", "sujetos")} · {Plural(movements, "movimiento", "movimientos")}"
+                : "Sin grabaciones todavía";
 
-            // Movimientos con al menos una captura, contando las de todos sus sujetos.
-            var movementsCount = _catalog.GetMovements().Count(m => _catalog.CountRecordings(m, null) > 0);
-            RecordingsSummary = count > 0
-                ? $"{count} grabaciones · {movementsCount} movimientos"
-                : "Sin grabaciones registradas";
-
-            var latestModel = _environment.GetModelFiles().FirstOrDefault();
-            HasTrainedModel = latestModel is not null;
-            Status.RefreshModel(latestModel);
-
-            ModelStatusText = HasTrainedModel ? Path.GetFileName(latestModel)! : "Sin entrenar";
-            ModelStatusDetail = HasTrainedModel ? "Modelo más reciente · 16 feat" : "Pendiente de entrenamiento";
+            var latest = _models.GetAllModels().FirstOrDefault();
+            HasTrainedModel = latest is not null;
+            Status.RefreshModel(latest?.FilePath);
+            ModelStatusText = latest?.Name ?? "Sin entrenar";
+            ModelStatusDetail = latest is null
+                ? "Pendiente de entrenamiento"
+                : string.Join(" · ", new[] { latest.Algorithm?.DisplayName, latest.Subject ?? "sin sujeto" }.OfType<string>());
+            TrainingSummary = latest switch
+            {
+                null => "Aún no hay modelos",
+                { Accuracy: { } accuracy } => $"Último: exactitud {accuracy.ToString("P1", Es)}",
+                _ => $"Último: {latest.Name}",
+            };
+            TrainingButtonText = HasTrainedModel ? "Volver a entrenar" : "Entrenar modelo";
         }
-        catch
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Fallback seguro a valores por defecto en caso de acceso a disco bloqueado
+            CaptureSummary = "No se pudo leer la carpeta de datos";
         }
+        UpdateDevice();
+        UpdateSteps();
     }
+
+    private void UpdateDevice()
+    {
+        var executable = _settings.Load().CaptureExecutablePath;
+        var found = File.Exists(executable);
+        (DeviceStatusText, DeviceStatusDetail, IsDeviceReady) = (Status.IsCapturing, Status.IsPredicting, found) switch
+        {
+            (true, _, _) => ("Grabando", "Captura en curso", true),
+            (_, true, _) => ("Prediciendo", "Clasificación en vivo", true),
+            (_, _, true) => ("Listo", $"{Path.GetFileName(executable)} encontrado", true),
+            _ => ("No encontrado", "Revisa la ruta en Capturar", false),
+        };
+    }
+
+    private void UpdateSteps()
+    {
+        CaptureStep = Status.IsCapturing ? StepStatus.Running : _hasRecordings ? StepStatus.Done : StepStatus.Next;
+        TrainingStep = Status.IsTraining ? StepStatus.Running
+            : HasTrainedModel ? StepStatus.Done
+            : _hasRecordings ? StepStatus.Next
+            : StepStatus.Pending;
+        RealtimeStep = Status.IsPredicting ? StepStatus.Running
+            : HasTrainedModel && IsDeviceReady ? StepStatus.Next
+            : StepStatus.Pending;
+        RealtimeSummary = (HasTrainedModel, IsDeviceReady) switch
+        {
+            (true, true) => "Modelo y capturador listos",
+            (false, true) => "Falta entrenar un modelo",
+            (true, false) => "Falta el capturador",
+            _ => "Faltan el modelo y el capturador",
+        };
+    }
+
+    private static string Plural(int count, string one, string many) =>
+        $"{count.ToString("N0", Es)} {(count == 1 ? one : many)}";
 
     [RelayCommand]
-    private void SetPresetSampleRate(string hz)
-    {
-        SampleRateInput = hz;
-    }
+    private void SetPresetSampleRate(string hz) => SampleRateInput = hz;
 
     [RelayCommand]
     private void NavigateCapture() => _navigationService.NavigateTo<CaptureViewModel>();

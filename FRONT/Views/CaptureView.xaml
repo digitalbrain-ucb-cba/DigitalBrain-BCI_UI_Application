@@ -71,7 +71,7 @@
                 <TextBlock Text="PASO 1 · MÓDULO DE ADQUISICIÓN" Style="{StaticResource SectionLabelStyle}" />
                 <TextBlock Text="Capturar" FontFamily="{StaticResource DisplayFont}" FontSize="36" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,4" />
-                <TextBlock Text="Graba sesiones con ConDumpAuto.exe en la carpeta de cada movimiento y sujeto." FontSize="18"
+                <TextBlock Text="Graba sesiones con ConDumpAuto.exe en la carpeta de cada sujeto y movimiento." FontSize="18"
                            Foreground="{DynamicResource TextSecondaryBrush}" />
             </StackPanel>
 
@@ -89,11 +89,39 @@
                         <StackPanel IsEnabled="{Binding IsCapturing, Converter={StaticResource InverseBool}}">
                             <TextBlock Text="CONFIGURACIÓN DE SESIÓN" Style="{StaticResource SectionLabelStyle}" Margin="0,0,0,-4" />
 
+                            <!-- Sujeto: primer campo; su carpeta guarda movimientos y modelos -->
+                            <TextBlock Text="SUJETO" Style="{StaticResource FieldLabelStyle}" />
+                            <DockPanel Visibility="{Binding IsAddingSubject, Converter={StaticResource InverseBoolToVisibility}}">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Content="+" FontSize="22" Margin="10,0,0,0"
+                                        Command="{Binding StartAddSubjectCommand}" ToolTip="Añadir un sujeto nuevo" />
+                                <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Subjects}"
+                                          SelectedItem="{Binding SelectedSubject}" IsEnabled="{Binding HasSubjects}" />
+                            </DockPanel>
+                            <TextBlock Text="Aún no hay sujetos: añade uno con «+»." Style="{StaticResource HintTextStyle}"
+                                       Visibility="{Binding ShowNoSubjectsHint, Converter={StaticResource BoolToVisibility}}" />
+                            <StackPanel Visibility="{Binding IsAddingSubject, Converter={StaticResource BoolToVisibility}}">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Content="✕" Margin="8,0,0,0"
+                                            Command="{Binding CancelAddSubjectCommand}" ToolTip="Cancelar" />
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Content="Añadir" Padding="18,0" Margin="10,0,0,0"
+                                            Command="{Binding ConfirmAddSubjectCommand}" />
+                                    <TextBox Style="{StaticResource InputStyle}" Tag="Nombre de la persona" IsVisibleChanged="FocusWhenShown"
+                                             Text="{Binding NewSubjectName, UpdateSourceTrigger=PropertyChanged}">
+                                        <TextBox.InputBindings>
+                                            <KeyBinding Key="Enter" Command="{Binding ConfirmAddSubjectCommand}" />
+                                            <KeyBinding Key="Escape" Command="{Binding CancelAddSubjectCommand}" />
+                                        </TextBox.InputBindings>
+                                    </TextBox>
+                                </DockPanel>
+                                <TextBlock Text="{Binding NewSubjectPreview}" Style="{StaticResource HintTextStyle}" />
+                                <TextBlock Text="{Binding SubjectWarning}" Style="{StaticResource WarningTextStyle}" />
+                            </StackPanel>
+
                             <!-- Movimiento: lista o campo para añadir uno nuevo -->
                             <TextBlock Text="MOVIMIENTO / CLASE" Style="{StaticResource FieldLabelStyle}" />
                             <DockPanel Visibility="{Binding IsAddingMovement, Converter={StaticResource InverseBoolToVisibility}}">
                                 <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Content="+" FontSize="22" Margin="10,0,0,0"
-                                        Command="{Binding StartAddMovementCommand}" ToolTip="Añadir un movimiento nuevo" />
+                                        Command="{Binding StartAddMovementCommand}" ToolTip="Añadir un movimiento nuevo al sujeto" />
                                 <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Movements}"
                                           SelectedItem="{Binding SelectedMovement}" DisplayMemberPath="DisplayName" />
                             </DockPanel>
@@ -117,35 +145,8 @@
                             <!-- Tipo de entrenamiento: prefijo del sujeto -->
                             <TextBlock Text="TIPO DE ENTRENAMIENTO" Style="{StaticResource FieldLabelStyle}" />
                             <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding ModelTypes}"
-                                      SelectedItem="{Binding SelectedModelType}" />
-
-                            <!-- Sujeto: los de este tipo que ya tiene el movimiento elegido, o uno nuevo -->
-                            <TextBlock Text="SUJETO" Style="{StaticResource FieldLabelStyle}" />
-                            <DockPanel Visibility="{Binding IsAddingSubject, Converter={StaticResource InverseBoolToVisibility}}">
-                                <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Content="+" FontSize="22" Margin="10,0,0,0"
-                                        Command="{Binding StartAddSubjectCommand}" ToolTip="Añadir un sujeto nuevo a este movimiento" />
-                                <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Subjects}"
-                                          SelectedItem="{Binding SelectedSubject}" IsEnabled="{Binding HasSubjects}" />
-                            </DockPanel>
-                            <TextBlock Text="Este movimiento aún no tiene sujetos de este tipo: añade uno con «+»." Style="{StaticResource HintTextStyle}"
-                                       Visibility="{Binding ShowNoSubjectsHint, Converter={StaticResource BoolToVisibility}}" />
-                            <StackPanel Visibility="{Binding IsAddingSubject, Converter={StaticResource BoolToVisibility}}">
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Content="✕" Margin="8,0,0,0"
-                                            Command="{Binding CancelAddSubjectCommand}" ToolTip="Cancelar" />
-                                    <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButtonStyle}" Content="Añadir" Padding="18,0" Margin="10,0,0,0"
-                                            Command="{Binding ConfirmAddSubjectCommand}" />
-                                    <TextBox Style="{StaticResource InputStyle}" Tag="Nombre de la persona" IsVisibleChanged="FocusWhenShown"
-                                             Text="{Binding NewSubjectName, UpdateSourceTrigger=PropertyChanged}">
-                                        <TextBox.InputBindings>
-                                            <KeyBinding Key="Enter" Command="{Binding ConfirmAddSubjectCommand}" />
-                                            <KeyBinding Key="Escape" Command="{Binding CancelAddSubjectCommand}" />
-                                        </TextBox.InputBindings>
-                                    </TextBox>
-                                </DockPanel>
-                                <TextBlock Text="{Binding NewSubjectPreview}" Style="{StaticResource HintTextStyle}" />
-                                <TextBlock Text="{Binding SubjectWarning}" Style="{StaticResource WarningTextStyle}" />
-                            </StackPanel>
+                                      SelectedItem="{Binding SelectedModelType}" IsEnabled="{Binding CanChooseModelType}" />
+                            <TextBlock Text="{Binding ModelTypeHint}" Style="{StaticResource HintTextStyle}" />
 
                             <TextBlock Text="NÚMERO DE SESIÓN" Style="{StaticResource FieldLabelStyle}" />
                             <TextBox Style="{StaticResource InputStyle}" Text="{Binding SessionNumberText, UpdateSourceTrigger=PropertyChanged}" />
@@ -170,8 +171,8 @@
 
                             <TextBlock Text="CARPETA DE SALIDA" Style="{StaticResource FieldLabelStyle}" />
                             <TextBox Style="{StaticResource InputStyle}" Text="{Binding OutputFolder, Mode=OneWay}" IsReadOnly="True"
-                                     Tag="Elige movimiento y sujeto"
-                                     ToolTip="Se crea sola, relativa a la carpeta BACK: datos\&lt;movimiento&gt;\&lt;sujeto&gt;\" />
+                                     Tag="Elige sujeto y movimiento"
+                                     ToolTip="Se crea sola, relativa a la carpeta BACK: datos\&lt;sujeto&gt;\movimientos\&lt;movimiento&gt;\" />
 
                             <TextBlock Margin="0,12,0,0" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap">
                                 <Run Text="Se guardará como" />

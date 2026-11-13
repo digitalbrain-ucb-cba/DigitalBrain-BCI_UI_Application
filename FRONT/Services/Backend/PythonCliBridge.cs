@@ -43,7 +43,8 @@ public class PythonCliBridge : IBackendBridge
         LastError = null;
         progress?.Report($"Construyendo dataset para etiqueta '{label}'...");
 
-        string args = $"-m digital_brain.cli build-dataset \"{inputDirectory}\" \"{outputCsvPath}\" \"{label}\"";
+        var sampleRate = AcquisitionParameters.SampleRateHz.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string args = $"-m digital_brain.cli build-dataset \"{inputDirectory}\" \"{outputCsvPath}\" \"{label}\" --sample-rate {sampleRate}";
         var result = await RunProcessAsync(_pythonExecutable, args, _backendRootPath, progress);
 
         if (result.ExitCode == 0)

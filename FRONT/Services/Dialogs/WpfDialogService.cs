@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Windows;
 using Microsoft.Win32;
 
 namespace DigitalBrain.UI.Services.Dialogs;
@@ -42,6 +43,10 @@ public sealed class WpfDialogService : IDialogService
         if (Directory.Exists(path))
             Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
     }
+
+    public bool Confirm(string title, string message) =>
+        MessageBox.Show(Application.Current?.MainWindow!, message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No)
+            == MessageBoxResult.Yes;
 
     private static string ExistingDirectory(string? path) =>
         !string.IsNullOrWhiteSpace(path) && Directory.Exists(path) ? path : "";

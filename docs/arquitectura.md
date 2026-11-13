@@ -39,7 +39,7 @@ ConDumpAuto.exe + modelo .pkl ──► predict (RealtimeClassifier) ──► e
 
 `capture` recibe la ruta de una carpeta externa que contiene `ConDump.exe` y sus archivos auxiliares. Ejecuta el programa con esa carpeta como directorio de trabajo y guarda en `BACK/datos_capturados/` por defecto. `build-dataset` recibe explícitamente una carpeta de archivos `.txt`; no hay conexión automática entre ambos pasos. `predict` une la adquisición con `RealtimeClassifier` y clasifica en vivo hasta que se detiene.
 
-Los datos originales versionados están en `BACK/datos/`. Las rutas `BACK/artifacts/datasets/` y `BACK/artifacts/models/` son ejemplos de salida: se crean al ejecutar los casos de uso, no son carpetas obligatorias del paquete.
+Los datos originales versionados están en `BACK/datos/Datos originales/`; la interfaz guarda las grabaciones y modelos de cada sujeto en `BACK/datos/<sujeto>/`. Las rutas `BACK/artifacts/datasets/` y `BACK/artifacts/models/` son ejemplos de salida de la CLI: se crean al ejecutar los casos de uso, no son carpetas obligatorias del paquete.
 
 ## Límites de la estructura
 

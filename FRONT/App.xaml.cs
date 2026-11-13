@@ -36,6 +36,7 @@ public partial class App : Application
         services.AddSingleton<IRealtimeGateway, PythonCliRealtimeGateway>();
         services.AddSingleton<ISessionLog, JsonlSessionLog>();
         services.AddSingleton<IDataCatalog, FileSystemDataCatalog>();
+        services.AddSingleton<IModelStore, FileSystemModelStore>();
         services.AddSingleton<IRecordingRepository, FileSystemRecordingRepository>();
         services.AddSingleton<SignalRingBuffer>();
         services.AddSingleton<IDialogService, WpfDialogService>();
@@ -72,6 +73,9 @@ public partial class App : Application
         {
             DigitalBrain.UI.Models.AcquisitionParameters.SampleRateHz = userSettings.SampleRateHz;
         }
+
+        // Antes de mostrar nada: las pantallas leen las carpetas con la organización por sujeto.
+        LegacyDataMigration.Run(_serviceProvider.GetRequiredService<IBackendEnvironment>());
 
         var themeService = _serviceProvider.GetRequiredService<IThemeService>();
         themeService.Apply(themeService.Current);

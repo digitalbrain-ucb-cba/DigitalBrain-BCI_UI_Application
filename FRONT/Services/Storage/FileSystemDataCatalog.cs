@@ -4,25 +4,52 @@ using DigitalBrain.UI.UseCases.Ports;
 namespace DigitalBrain.UI.Services.Storage;
 
 /// <summary>
-/// Catálogo leído directamente de <c>BACK/datos</c>: cada subcarpeta que no es de un movimiento predefinido
-/// es un movimiento añadido, y cada subcarpeta de un movimiento es un sujeto. No hay archivo de configuración aparte,
-/// así que lo que se ve en la interfaz es siempre lo que hay en disco.
+/// Catálogo leído directamente de <c>BACK/datos</c> con la organización de <see cref="DataLayout"/>: cada carpeta de sujeto es
+/// un sujeto, y cada carpeta de sus movimientos que no es de un movimiento predefinido es un movimiento añadido. No hay archivo
+/// de configuración aparte, así que lo que se ve en la interfaz es siempre lo que hay en disco.
 /// </summary>
 public sealed class FileSystemDataCatalog(IBackendEnvironment environment) : IDataCatalog
 {
     private static readonly StringComparer NameComparer = StringComparer.CurrentCultureIgnoreCase;
 
+    public IReadOnlyList<string> GetSubjects() =>
+        Directory.Exists(environment.DataRoot)
+            ? Directory.EnumerateDirectories(environment.DataRoot)
+                .Where(DataLayout.IsSubjectDirectory)
+                .Select(Path.GetFileName)
+                .OfType<string>()
+                .Where(name => !name.StartsWith('.'))
+                .Order(NameComparer)
+                .ToList()
+            : [];
+
+    public CatalogResult<string> AddSubject(string name)
+    {
+        name = CatalogNames.Normalize(name);
+        if (CatalogNames.Validate(name, "sujeto") is { } error)
+            return CatalogResult<string>.Invalid(error);
+
+        var existing = GetSubjects().FirstOrDefault(subject => NameComparer.Equals(subject, name));
+        if (existing is not null)
+            return CatalogResult<string>.Duplicate(existing, $"El sujeto «{existing}» ya existe.");
+        if (Directory.Exists(SubjectDirectory(name)))
+            return CatalogResult<string>.Invalid($"Ya hay en datos una carpeta «{name}» que no es de un sujeto; elige otro nombre.");
+
+        Directory.CreateDirectory(Path.Combine(SubjectDirectory(name), DataLayout.MovementsFolder));
+        Directory.CreateDirectory(ModelsDirectory(name));
+        return CatalogResult<string>.Created(name);
+    }
+
     public IReadOnlyList<MovementClass> GetMovements()
     {
         var movements = MovementCatalog.BuiltIn.ToList();
-        if (!Directory.Exists(environment.DataRoot)) return movements;
-
-        var builtInFolders = MovementCatalog.BuiltIn.Select(MovementDirectory).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var customNames = Directory.EnumerateDirectories(environment.DataRoot)
-            .Where(directory => !builtInFolders.Contains(Path.TrimEndingDirectorySeparator(directory)))
+        var customNames = GetSubjects()
+            .SelectMany(subject => SafeDirectories(Path.Combine(SubjectDirectory(subject), DataLayout.MovementsFolder)))
             .Select(Path.GetFileName)
             .OfType<string>()
+            .Where(name => !MovementCatalog.BuiltIn.Any(builtIn => NameComparer.Equals(builtIn.FolderName, name)))
             .Where(name => CatalogNames.Validate(name, "movimiento") is null && MovementCatalog.ToLabel(name).Length > 0)
+            .Distinct(NameComparer)
             .Order(NameComparer);
 
         foreach (var name in customNames)
@@ -35,19 +62,7 @@ public sealed class FileSystemDataCatalog(IBackendEnvironment environment) : IDa
         return movements;
     }
 
-    public IReadOnlyList<string> GetSubjects(MovementClass movement)
-    {
-        var directory = MovementDirectory(movement);
-        if (!Directory.Exists(directory)) return [];
-        return Directory.EnumerateDirectories(directory)
-            .Select(Path.GetFileName)
-            .OfType<string>()
-            .Where(name => !name.StartsWith('.'))
-            .Order(NameComparer)
-            .ToList();
-    }
-
-    public CatalogResult<MovementClass> AddMovement(string name)
+    public CatalogResult<MovementClass> AddMovement(string subject, string name)
     {
         name = CatalogNames.Normalize(name);
         if (CatalogNames.Validate(name, "movimiento") is { } error)
@@ -57,48 +72,27 @@ public sealed class FileSystemDataCatalog(IBackendEnvironment environment) : IDa
         if (label.Length == 0)
             return CatalogResult<MovementClass>.Invalid("El nombre del movimiento necesita al menos una letra o un número.");
 
-        var existing = GetMovements().FirstOrDefault(m =>
-            NameComparer.Equals(m.DisplayName, name) ||
-            m.Label == label ||
-            NameComparer.Equals(Path.GetFileName(MovementDirectory(m)), name));
+        var existing = GetMovements().FirstOrDefault(m => NameComparer.Equals(m.DisplayName, name) || m.Label == label);
         if (existing is not null)
             return CatalogResult<MovementClass>.Duplicate(existing, $"Ya existe el movimiento «{existing.DisplayName}».");
 
-        Directory.CreateDirectory(Path.Combine(environment.DataRoot, name));
+        Directory.CreateDirectory(Path.Combine(SubjectDirectory(subject), DataLayout.MovementsFolder, name));
         return CatalogResult<MovementClass>.Created(GetMovements().First(m => m.Label == label));
     }
 
-    public CatalogResult<string> AddSubject(MovementClass movement, string name)
+    public string SubjectDirectory(string subject) => Path.Combine(environment.DataRoot, subject);
+
+    public string MovementDirectory(string subject, MovementClass movement) =>
+        Path.Combine(SubjectDirectory(subject), DataLayout.MovementsFolder, movement.FolderName);
+
+    public string ModelsDirectory(string subject) => Path.Combine(SubjectDirectory(subject), DataLayout.ModelsFolder);
+
+    public int CountRecordings(string subject, MovementClass movement)
     {
-        name = CatalogNames.Normalize(name);
-        if (CatalogNames.Validate(name, "sujeto") is { } error)
-            return CatalogResult<string>.Invalid(error);
-
-        var existing = GetSubjects(movement).FirstOrDefault(subject => NameComparer.Equals(subject, name));
-        if (existing is not null)
-            return CatalogResult<string>.Duplicate(existing, $"El sujeto «{existing}» ya existe en {movement.DisplayName}.");
-
-        Directory.CreateDirectory(SubjectDirectory(movement, name));
-        return CatalogResult<string>.Created(name);
+        var directory = MovementDirectory(subject, movement);
+        return Directory.Exists(directory) ? Directory.EnumerateFiles(directory, "*.txt").Count() : 0;
     }
 
-    public string MovementDirectory(MovementClass movement) =>
-        Path.TrimEndingDirectorySeparator(environment.Resolve(movement.DataFolder));
-
-    public string SubjectDirectory(MovementClass movement, string subject) =>
-        Path.Combine(MovementDirectory(movement), subject);
-
-    public IReadOnlyList<string> RecordingDirectories(MovementClass movement, string? subject)
-    {
-        IEnumerable<string> candidates = subject is null
-            ? [MovementDirectory(movement), .. GetSubjects(movement).Select(s => SubjectDirectory(movement, s))]
-            : [SubjectDirectory(movement, subject)];
-        return candidates.Where(directory => CountCaptures(directory) > 0).ToList();
-    }
-
-    public int CountRecordings(MovementClass movement, string? subject) =>
-        RecordingDirectories(movement, subject).Sum(CountCaptures);
-
-    private static int CountCaptures(string directory) =>
-        Directory.Exists(directory) ? Directory.EnumerateFiles(directory, "*.txt").Count() : 0;
+    private static IEnumerable<string> SafeDirectories(string directory) =>
+        Directory.Exists(directory) ? Directory.EnumerateDirectories(directory) : [];
 }

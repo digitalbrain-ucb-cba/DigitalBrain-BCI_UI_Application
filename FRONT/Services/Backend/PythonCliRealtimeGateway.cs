@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using DigitalBrain.UI.Models;
 using DigitalBrain.UI.UseCases.Ports;
 
 namespace DigitalBrain.UI.Services.Backend;
@@ -43,6 +44,7 @@ public sealed partial class PythonCliRealtimeGateway(IBackendEnvironment environ
                      "-u", "-m", "digital_brain.cli", "predict",
                      Path.GetDirectoryName(request.ExecutablePath)!, request.ModelPath,
                      "--executable-name", Path.GetFileName(request.ExecutablePath),
+                     "--sample-rate", AcquisitionParameters.SampleRateHz.ToString(CultureInfo.InvariantCulture),
                  })
         {
             startInfo.ArgumentList.Add(argument);

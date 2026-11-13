@@ -1,6 +1,6 @@
 # Datos y modelos
 
-Este documento describe el comportamiento actual del backend. Los archivos de `BACK/datos/` son capturas originales: hay archivos `.txt` de pierna izquierda en `left/`, brazo derecho en `Right/` y hombro derecho en `datos_hombro_derecho/`. Sus nombres y carpetas no constituyen metadatos formales de sujeto, sesión o posición de sensores.
+Este documento describe el comportamiento actual del backend. Los datos de `BACK/datos/` se organizan por sujeto: `datos/<sujeto>/movimientos/<movimiento>/*.txt` y `datos/<sujeto>/modelos/*.pkl`. Las capturas originales del repositorio están en `datos/Datos originales/movimientos/` (`Brazo derecho`, `Pierna izquierda` y `Hombro derecho`); sus nombres y carpetas no constituyen metadatos formales de sujeto, sesión o posición de sensores.
 
 ## De línea de captura a muestra
 

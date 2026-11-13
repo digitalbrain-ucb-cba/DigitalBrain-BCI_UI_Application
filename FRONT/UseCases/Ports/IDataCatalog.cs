@@ -3,34 +3,29 @@ using DigitalBrain.UI.Models;
 namespace DigitalBrain.UI.UseCases.Ports;
 
 /// <summary>
-/// Movimientos y sujetos disponibles. Se guardan como carpetas: <c>BACK/datos/&lt;movimiento&gt;/&lt;sujeto&gt;/*.txt</c>.
-/// Las capturas anteriores que están sueltas en la carpeta del movimiento no pertenecen a ningún sujeto.
+/// Sujetos y movimientos disponibles. Se guardan como carpetas: cada sujeto tiene las suyas en
+/// <c>BACK/datos/&lt;sujeto&gt;/</c>, con <c>movimientos/&lt;movimiento&gt;/*.txt</c> y <c>modelos/*.pkl</c>.
 /// </summary>
 public interface IDataCatalog
 {
-    /// <summary>Movimientos predefinidos seguidos de los añadidos desde la interfaz.</summary>
+    /// <summary>Sujetos en orden alfabético.</summary>
+    IReadOnlyList<string> GetSubjects();
+
+    /// <summary>Crea la carpeta de un sujeto nuevo con sus carpetas de movimientos y modelos.</summary>
+    CatalogResult<string> AddSubject(string name);
+
+    /// <summary>Movimientos predefinidos seguidos de los añadidos a cualquier sujeto.</summary>
     IReadOnlyList<MovementClass> GetMovements();
 
-    /// <summary>Sujetos (subcarpetas) que tiene <paramref name="movement"/>, en orden alfabético.</summary>
-    IReadOnlyList<string> GetSubjects(MovementClass movement);
+    /// <summary>Crea un movimiento nuevo en la carpeta de movimientos de <paramref name="subject"/>.</summary>
+    CatalogResult<MovementClass> AddMovement(string subject, string name);
 
-    /// <summary>Crea la carpeta de un movimiento nuevo.</summary>
-    CatalogResult<MovementClass> AddMovement(string name);
+    string SubjectDirectory(string subject);
+    string MovementDirectory(string subject, MovementClass movement);
+    string ModelsDirectory(string subject);
 
-    /// <summary>Crea la carpeta de un sujeto nuevo dentro de <paramref name="movement"/>.</summary>
-    CatalogResult<string> AddSubject(MovementClass movement, string name);
-
-    string MovementDirectory(MovementClass movement);
-    string SubjectDirectory(MovementClass movement, string subject);
-
-    /// <summary>
-    /// Carpetas con capturas de <paramref name="movement"/>: la de <paramref name="subject"/> o, si es <c>null</c>,
-    /// las de todos los sujetos más la del movimiento si tiene capturas anteriores sueltas.
-    /// </summary>
-    IReadOnlyList<string> RecordingDirectories(MovementClass movement, string? subject);
-
-    /// <summary>Número de capturas <c>.txt</c> que usaría <see cref="RecordingDirectories"/>.</summary>
-    int CountRecordings(MovementClass movement, string? subject);
+    /// <summary>Número de capturas <c>.txt</c> de <paramref name="subject"/> para <paramref name="movement"/>.</summary>
+    int CountRecordings(string subject, MovementClass movement);
 }
 
 /// <param name="Value">Elemento creado o, si <paramref name="AlreadyExists"/>, el que ya existía.</param>

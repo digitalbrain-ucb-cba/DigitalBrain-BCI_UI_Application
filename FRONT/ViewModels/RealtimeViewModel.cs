@@ -40,6 +40,7 @@ public partial class RealtimeViewModel : BaseViewModel
     private readonly IBackendEnvironment _environment;
     private readonly ISettingsStore _settings;
     private readonly IDataCatalog _catalog;
+    private readonly IModelStore _models;
     private readonly IDialogService _dialogs;
     private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
     private CancellationTokenSource? _predictionCts;
@@ -52,6 +53,7 @@ public partial class RealtimeViewModel : BaseViewModel
         IBackendEnvironment environment,
         ISettingsStore settings,
         IDataCatalog catalog,
+        IModelStore models,
         IDialogService dialogs,
         SystemStatusViewModel status)
     {
@@ -61,6 +63,7 @@ public partial class RealtimeViewModel : BaseViewModel
         _environment = environment;
         _settings = settings;
         _catalog = catalog;
+        _models = models;
         _dialogs = dialogs;
         Status = status;
         Status.PropertyChanged += OnStatusChanged;
@@ -91,13 +94,13 @@ public partial class RealtimeViewModel : BaseViewModel
         if (!IsPredicting) ReloadModels();
     }
 
-    /// <summary>Lista los modelos de la carpeta; conserva el elegido, aunque venga de otra carpeta, o toma el más reciente.</summary>
+    /// <summary>Lista los modelos de todos los sujetos; conserva el elegido, aunque venga de otra carpeta, o toma el más reciente.</summary>
     private void ReloadModels()
     {
         var selected = SelectedModel;
         Models.Clear();
-        foreach (var file in _environment.GetModelFiles())
-            Models.Add(new ModelOption(file));
+        foreach (var model in _models.GetAllModels())
+            Models.Add(new ModelOption(model.FilePath));
         if (selected is not null && !Models.Contains(selected) && File.Exists(selected.FilePath))
             Models.Add(selected);
         SelectedModel = Models.Contains(selected!) ? selected : Models.FirstOrDefault();
@@ -118,7 +121,7 @@ public partial class RealtimeViewModel : BaseViewModel
     [RelayCommand]
     private void BrowseModel()
     {
-        if (_dialogs.PickModel(SelectedModel?.FilePath ?? _environment.ModelsDirectory + Path.DirectorySeparatorChar) is not { } path)
+        if (_dialogs.PickModel(SelectedModel?.FilePath ?? _environment.DataRoot + Path.DirectorySeparatorChar) is not { } path)
             return;
         var model = new ModelOption(path);
         if (!Models.Contains(model)) Models.Add(model);

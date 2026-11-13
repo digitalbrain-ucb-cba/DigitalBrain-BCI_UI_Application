@@ -4,8 +4,8 @@ using DigitalBrain.UI.UseCases.Ports;
 namespace DigitalBrain.UI.Services.Storage;
 
 /// <summary>
-/// Lee las capturas <c>.txt</c> de <c>BACK/datos</c> con las reglas de validez del backend. Una captura pertenece
-/// al movimiento de su carpeta y, si está en una subcarpeta de sujeto, a ese sujeto.
+/// Lee las capturas <c>.txt</c> de <c>BACK/datos</c> con las reglas de validez del backend. Una captura en
+/// <c>datos/&lt;sujeto&gt;/movimientos/&lt;movimiento&gt;/</c> pertenece a ese sujeto y a ese movimiento.
 /// </summary>
 public sealed class FileSystemRecordingRepository(IBackendEnvironment environment, ISessionLog sessionLog, IDataCatalog catalog) : IRecordingRepository
 {
@@ -63,23 +63,18 @@ public sealed class FileSystemRecordingRepository(IBackendEnvironment environmen
         return new RecordingSummary(file.Name, file.FullName, movement, subject, duration, valid, discarded, file.LastWriteTime);
     }
 
-    /// <summary>Movimiento y sujeto según la carpeta: <c>datos/&lt;movimiento&gt;/</c> o <c>datos/&lt;movimiento&gt;/&lt;sujeto&gt;/</c>.</summary>
-    private (MovementClass? Movement, string? Subject) Classify(FileInfo file, IReadOnlyList<MovementClass> movements)
+    /// <summary>Movimiento y sujeto según la carpeta <c>&lt;sujeto&gt;/movimientos/&lt;movimiento&gt;/</c>.</summary>
+    private static (MovementClass? Movement, string? Subject) Classify(FileInfo file, IReadOnlyList<MovementClass> movements)
     {
         var directory = file.Directory;
-        foreach (var movement in movements)
+        if (directory?.Parent is { } parent && parent.Parent is { } subject &&
+            string.Equals(parent.Name, DataLayout.MovementsFolder, StringComparison.OrdinalIgnoreCase))
         {
-            var movementDirectory = catalog.MovementDirectory(movement);
-            if (SamePath(directory?.FullName, movementDirectory))
-                return (movement, null);
-            if (SamePath(directory?.Parent?.FullName, movementDirectory))
-                return (movement, directory!.Name);
+            var movement = movements.FirstOrDefault(m => string.Equals(m.FolderName, directory.Name, StringComparison.CurrentCultureIgnoreCase));
+            return (movement, subject.Name);
         }
         return (movements.FirstOrDefault(m => m.TryGetSessionNumber(file.Name) is not null), null);
     }
-
-    private static bool SamePath(string? a, string b) =>
-        a is not null && string.Equals(Path.TrimEndingDirectorySeparator(a), b, StringComparison.OrdinalIgnoreCase);
 
     private static int SessionNumberOf(FileInfo file, IReadOnlyList<MovementClass> movements) =>
         movements.Select(m => m.TryGetSessionNumber(file.Name)).OfType<int>().DefaultIfEmpty(0).Max();
