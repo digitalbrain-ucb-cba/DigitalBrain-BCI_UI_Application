@@ -117,6 +117,12 @@
                                 <TextBlock Text="{Binding SubjectWarning}" Style="{StaticResource WarningTextStyle}" />
                             </StackPanel>
 
+                            <!-- Tipo de entrenamiento: al elegirlo se crea su carpeta dentro de la del sujeto -->
+                            <TextBlock Text="TIPO DE ENTRENAMIENTO" Style="{StaticResource FieldLabelStyle}" />
+                            <ListBox Style="{StaticResource OptionCardsStyle}" ItemsSource="{Binding ModelTypes}"
+                                     SelectedItem="{Binding SelectedModelType}" IsEnabled="{Binding HasSelectedSubject}" />
+                            <TextBlock Text="{Binding ModelTypeHint}" Style="{StaticResource HintTextStyle}" />
+
                             <!-- Movimiento: lista o campo para añadir uno nuevo -->
                             <TextBlock Text="MOVIMIENTO / CLASE" Style="{StaticResource FieldLabelStyle}" />
                             <DockPanel Visibility="{Binding IsAddingMovement, Converter={StaticResource InverseBoolToVisibility}}">
@@ -142,12 +148,6 @@
                                 <TextBlock Text="{Binding MovementWarning}" Style="{StaticResource WarningTextStyle}" />
                             </StackPanel>
 
-                            <!-- Tipo de entrenamiento: prefijo del sujeto -->
-                            <TextBlock Text="TIPO DE ENTRENAMIENTO" Style="{StaticResource FieldLabelStyle}" />
-                            <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding ModelTypes}"
-                                      SelectedItem="{Binding SelectedModelType}" IsEnabled="{Binding CanChooseModelType}" />
-                            <TextBlock Text="{Binding ModelTypeHint}" Style="{StaticResource HintTextStyle}" />
-
                             <TextBlock Text="NÚMERO DE SESIÓN" Style="{StaticResource FieldLabelStyle}" />
                             <TextBox Style="{StaticResource InputStyle}" Text="{Binding SessionNumberText, UpdateSourceTrigger=PropertyChanged}" />
 
@@ -171,8 +171,8 @@
 
                             <TextBlock Text="CARPETA DE SALIDA" Style="{StaticResource FieldLabelStyle}" />
                             <TextBox Style="{StaticResource InputStyle}" Text="{Binding OutputFolder, Mode=OneWay}" IsReadOnly="True"
-                                     Tag="Elige sujeto y movimiento"
-                                     ToolTip="Se crea sola, relativa a la carpeta BACK: datos\&lt;sujeto&gt;\movimientos\&lt;movimiento&gt;\" />
+                                     Tag="Elige sujeto, tipo y movimiento"
+                                     ToolTip="Se crea sola, relativa a la carpeta BACK: datos\&lt;sujeto&gt;\&lt;MI o M&gt;\movimientos\&lt;movimiento&gt;\" />
 
                             <TextBlock Margin="0,12,0,0" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap">
                                 <Run Text="Se guardará como" />

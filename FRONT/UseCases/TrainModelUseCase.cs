@@ -5,8 +5,8 @@ using DigitalBrain.UI.Services.Backend;
 namespace DigitalBrain.UI.UseCases;
 
 /// <summary>
-/// Caso de uso «entrenar modelo»: crea un CSV por cada movimiento elegido del sujeto con <c>build-dataset</c>,
-/// entrena un único modelo con todos ellos (<c>train</c>) y lo guarda en la carpeta de modelos del sujeto.
+/// Caso de uso «entrenar modelo»: crea un CSV por cada movimiento elegido del sujeto en un tipo (MI o M) con <c>build-dataset</c>,
+/// entrena un único modelo con todos ellos (<c>train</c>) y lo guarda en la carpeta de modelos de ese sujeto y tipo.
 /// </summary>
 public sealed class TrainModelUseCase(
     IBackendBridge backend,
@@ -20,6 +20,7 @@ public sealed class TrainModelUseCase(
 
     public async Task<TrainModelResult> ExecuteAsync(
         string subject,
+        ModelType type,
         IReadOnlyList<MovementClass> movements,
         string modelName,
         string algorithm,
@@ -31,13 +32,13 @@ public sealed class TrainModelUseCase(
 
         foreach (var movement in movements)
         {
-            if (catalog.CountRecordings(subject, movement) == 0)
-                return TrainModelResult.Failure($"{subject} no tiene grabaciones de {movement.DisplayName}.");
+            if (catalog.CountRecordings(subject, type, movement) == 0)
+                return TrainModelResult.Failure($"{subject} no tiene grabaciones {type.Folder} de {movement.DisplayName}.");
 
             // Una grabación corta o saturada genera un CSV vacío sin error, y luego train falla con un mensaje poco claro:
             // se comprueba antes con las mismas reglas de ventaneo que build-dataset.
             var windows = 0;
-            foreach (var file in Directory.EnumerateFiles(catalog.MovementDirectory(subject, movement), "*.txt"))
+            foreach (var file in Directory.EnumerateFiles(catalog.MovementDirectory(subject, type, movement), "*.txt"))
                 windows += (await recordings.AnalyzeAsync(file))?.Windows ?? 0;
             if (windows < MinimumWindowsPerMovement)
                 return TrainModelResult.Failure(
@@ -50,14 +51,14 @@ public sealed class TrainModelUseCase(
         foreach (var movement in movements)
         {
             progress?.Report($"Preparando dataset de {movement.DisplayName}…");
-            var csvPath = Path.Combine(environment.DatasetsDirectory, $"{subject}__{movement.Label}.csv");
-            if (!await backend.BuildDatasetAsync(catalog.MovementDirectory(subject, movement), csvPath, movement.Label, progress))
+            var csvPath = Path.Combine(environment.DatasetsDirectory, $"{subject}__{type.Folder}__{movement.Label}.csv");
+            if (!await backend.BuildDatasetAsync(catalog.MovementDirectory(subject, type, movement), csvPath, movement.Label, progress))
                 return TrainModelResult.Failure($"No se pudo crear el dataset de {movement.DisplayName}: {backend.LastError ?? "error desconocido"}");
             datasets.Add(csvPath);
         }
 
         progress?.Report("Entrenando modelo…");
-        var modelPath = models.ModelPath(subject, modelName);
+        var modelPath = models.ModelPath(subject, type, modelName);
         var result = await backend.TrainModelAsync(modelPath, datasets, algorithm, progress);
         if (result is null)
         {
@@ -66,7 +67,7 @@ public sealed class TrainModelUseCase(
                 : "El entrenamiento falló; revisa que el entorno de Python tenga el paquete digital_brain instalado.");
         }
 
-        models.SaveInfo(new ModelInfo(modelPath, subject, algorithm, result.Accuracy, result.CompletedAt, movements.Select(m => m.Label).ToList()));
+        models.SaveInfo(new ModelInfo(modelPath, subject, type, algorithm, result.Accuracy, result.CompletedAt, movements.Select(m => m.Label).ToList()));
         return TrainModelResult.Success(result, movements);
     }
 }

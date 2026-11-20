@@ -132,7 +132,7 @@ public partial class HomeViewModel : BaseViewModel
             var count = await _recordings.CountAsync();
             Status.RecordingCount = count;
             var subjects = _catalog.GetSubjects();
-            var movements = _catalog.GetMovements().Count(m => subjects.Any(s => _catalog.CountRecordings(s, m) > 0));
+            var movements = _catalog.GetMovements().Count(m => subjects.Any(s => ModelType.All.Any(t => _catalog.CountRecordings(s, t, m) > 0)));
             _hasRecordings = count > 0;
             CaptureSummary = count > 0
                 ? $"{Plural(count, "grabación", "grabaciones")} · {Plural(subjects.Count, "sujeto", "sujetos")} · {Plural(movements, "movimiento", "movimientos")}"
@@ -144,7 +144,7 @@ public partial class HomeViewModel : BaseViewModel
             ModelStatusText = latest?.Name ?? "Sin entrenar";
             ModelStatusDetail = latest is null
                 ? "Pendiente de entrenamiento"
-                : string.Join(" · ", new[] { latest.Algorithm?.DisplayName, latest.Subject ?? "sin sujeto" }.OfType<string>());
+                : string.Join(" · ", new[] { latest.Algorithm?.DisplayName, latest.Subject ?? "sin sujeto", latest.Type?.Folder }.OfType<string>());
             TrainingSummary = latest switch
             {
                 null => "Aún no hay modelos",

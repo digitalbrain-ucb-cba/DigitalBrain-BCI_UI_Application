@@ -10,7 +10,9 @@ public sealed class RecordingItemViewModel(RecordingSummary recording)
     public string FileName { get; } = recording.FileName;
     public string FullPath { get; } = recording.FullPath;
     public string MovementName { get; } = recording.Movement?.DisplayName ?? "Sin clase";
-    public string SubjectName { get; } = recording.Subject ?? "sin sujeto";
+    public string SubjectName { get; } = recording.Subject is null ? "sin sujeto"
+        : recording.Type is null ? recording.Subject
+        : $"{recording.Subject} · {recording.Type.Folder}";
     public string AccentHex { get; } = recording.Movement?.AccentHex ?? "#8A8F98";
     public string DurationText { get; } = $"{recording.DurationSeconds.ToString("0", Es)} s";
     public string ValidCount { get; } = recording.ValidSamples.ToString("N0", Es);

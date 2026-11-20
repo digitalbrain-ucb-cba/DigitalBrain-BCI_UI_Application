@@ -6,6 +6,7 @@ public sealed record RecordingSummary(
     string FullPath,
     MovementClass? Movement,
     string? Subject,
+    ModelType? Type,
     double DurationSeconds,
     long ValidSamples,
     long DiscardedSamples,

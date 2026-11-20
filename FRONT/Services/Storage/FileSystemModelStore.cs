@@ -6,7 +6,7 @@ using DigitalBrain.UI.UseCases.Ports;
 namespace DigitalBrain.UI.Services.Storage;
 
 /// <summary>
-/// Modelos <c>.pkl</c> en la carpeta de cada sujeto. Los datos de su entrenamiento van en un <c>.json</c> con el mismo nombre;
+/// Modelos <c>.pkl</c> en la carpeta de cada sujeto y tipo. Los datos de su entrenamiento van en un <c>.json</c> con el mismo nombre;
 /// los modelos sin él (los anteriores a este cambio o los copiados a mano) se muestran con la fecha del archivo.
 /// </summary>
 public sealed class FileSystemModelStore(IDataCatalog catalog, IBackendEnvironment environment) : IModelStore
@@ -15,16 +15,17 @@ public sealed class FileSystemModelStore(IDataCatalog catalog, IBackendEnvironme
     private const string InfoExtension = ".json";
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    public IReadOnlyList<ModelInfo> GetModels(string subject) => Read(catalog.ModelsDirectory(subject), subject);
+    public IReadOnlyList<ModelInfo> GetModels(string subject, ModelType type) => Read(catalog.ModelsDirectory(subject, type), subject, type);
 
     public IReadOnlyList<ModelInfo> GetAllModels() =>
         catalog.GetSubjects()
-            .SelectMany(GetModels)
-            .Concat(Read(environment.LegacyModelsDirectory, subject: null))
+            .SelectMany(subject => ModelType.All.SelectMany(type => GetModels(subject, type)))
+            .Concat(Read(environment.LegacyModelsDirectory, subject: null, type: null))
             .OrderByDescending(model => model.TrainedAt)
             .ToList();
 
-    public string ModelPath(string subject, string name) => Path.Combine(catalog.ModelsDirectory(subject), name + ModelExtension);
+    public string ModelPath(string subject, ModelType type, string name) =>
+        Path.Combine(catalog.ModelsDirectory(subject, type), name + ModelExtension);
 
     public void SaveInfo(ModelInfo model)
     {
@@ -47,23 +48,23 @@ public sealed class FileSystemModelStore(IDataCatalog catalog, IBackendEnvironme
             File.Delete(InfoPath(model.FilePath));
     }
 
-    private static IReadOnlyList<ModelInfo> Read(string directory, string? subject)
+    private static IReadOnlyList<ModelInfo> Read(string directory, string? subject, ModelType? type)
     {
         if (!Directory.Exists(directory)) return [];
         return Directory.EnumerateFiles(directory, "*" + ModelExtension)
-            .Select(path => ReadOne(path, subject))
+            .Select(path => ReadOne(path, subject, type))
             .OrderByDescending(model => model.TrainedAt)
             .ToList();
     }
 
-    private static ModelInfo ReadOne(string path, string? subject)
+    private static ModelInfo ReadOne(string path, string? subject, ModelType? type)
     {
         var info = ReadInfo(path);
         var name = Path.GetFileNameWithoutExtension(path);
         // Sin datos guardados, el algoritmo se deduce del nombre automático «…_<algoritmo>».
         var algorithm = info?.AlgorithmId
                         ?? TrainingAlgorithm.All.FirstOrDefault(a => name.EndsWith("_" + a.Id, StringComparison.OrdinalIgnoreCase))?.Id;
-        return new ModelInfo(path, subject, algorithm, info?.Accuracy, info?.TrainedAt ?? File.GetLastWriteTime(path), info?.Movements ?? []);
+        return new ModelInfo(path, subject, type, algorithm, info?.Accuracy, info?.TrainedAt ?? File.GetLastWriteTime(path), info?.Movements ?? []);
     }
 
     private static StoredInfo? ReadInfo(string modelPath)

@@ -50,7 +50,11 @@
 
                         <TextBlock Text="SUJETO" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,6" />
                         <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Subjects}" SelectedItem="{Binding SelectedSubject}"
-                                  IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}" Margin="0,0,0,20" />
+                                  IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}" />
+
+                        <TextBlock Text="TIPO DE ENTRENAMIENTO" Style="{StaticResource FieldLabelStyle}" Margin="0,16,0,6" />
+                        <ListBox Style="{StaticResource OptionCardsStyle}" ItemsSource="{Binding ModelTypes}" SelectedItem="{Binding SelectedModelType}"
+                                 IsEnabled="{Binding IsTraining, Converter={StaticResource InverseBool}}" Margin="-5,0,-5,20" />
 
                         <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>

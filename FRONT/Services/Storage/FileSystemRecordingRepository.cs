@@ -5,7 +5,7 @@ namespace DigitalBrain.UI.Services.Storage;
 
 /// <summary>
 /// Lee las capturas <c>.txt</c> de <c>BACK/datos</c> con las reglas de validez del backend. Una captura en
-/// <c>datos/&lt;sujeto&gt;/movimientos/&lt;movimiento&gt;/</c> pertenece a ese sujeto y a ese movimiento.
+/// <c>datos/&lt;sujeto&gt;/&lt;MI|M&gt;/movimientos/&lt;movimiento&gt;/</c> pertenece a ese sujeto, tipo y movimiento.
 /// </summary>
 public sealed class FileSystemRecordingRepository(IBackendEnvironment environment, ISessionLog sessionLog, IDataCatalog catalog) : IRecordingRepository
 {
@@ -59,22 +59,32 @@ public sealed class FileSystemRecordingRepository(IBackendEnvironment environmen
         var file = new FileInfo(filePath);
         var duration = sessionLog.FindDurationSeconds(file.Name)
                        ?? Math.Round((valid + discarded) / AcquisitionParameters.SampleRateHz);
-        var (movement, subject) = Classify(file, movements);
-        return new RecordingSummary(file.Name, file.FullName, movement, subject, duration, valid, discarded, file.LastWriteTime);
+        var (movement, subject, type) = Classify(file, movements);
+        return new RecordingSummary(file.Name, file.FullName, movement, subject, type, duration, valid, discarded, file.LastWriteTime);
     }
 
-    /// <summary>Movimiento y sujeto según la carpeta <c>&lt;sujeto&gt;/movimientos/&lt;movimiento&gt;/</c>.</summary>
-    private static (MovementClass? Movement, string? Subject) Classify(FileInfo file, IReadOnlyList<MovementClass> movements)
+    /// <summary>
+    /// Movimiento, sujeto y tipo según la carpeta <c>&lt;sujeto&gt;/&lt;MI|M&gt;/movimientos/&lt;movimiento&gt;/</c>; en las de sujetos
+    /// sin tipo de la organización anterior (<c>&lt;sujeto&gt;/movimientos/&lt;movimiento&gt;/</c>) el tipo queda vacío.
+    /// </summary>
+    private (MovementClass? Movement, string? Subject, ModelType? Type) Classify(FileInfo file, IReadOnlyList<MovementClass> movements)
     {
         var directory = file.Directory;
-        if (directory?.Parent is { } parent && parent.Parent is { } subject &&
+        if (directory?.Parent is { } parent && parent.Parent is { } owner &&
             string.Equals(parent.Name, DataLayout.MovementsFolder, StringComparison.OrdinalIgnoreCase))
         {
             var movement = movements.FirstOrDefault(m => string.Equals(m.FolderName, directory.Name, StringComparison.CurrentCultureIgnoreCase));
-            return (movement, subject.Name);
+            // La carpeta de tipo cuelga de la del sujeto, que cuelga de datos.
+            return ModelType.FromFolder(owner.Name) is { } type && owner.Parent is { } subject && IsDataRoot(subject.Parent)
+                ? (movement, subject.Name, type)
+                : (movement, owner.Name, null);
         }
-        return (movements.FirstOrDefault(m => m.TryGetSessionNumber(file.Name) is not null), null);
+        return (movements.FirstOrDefault(m => m.TryGetSessionNumber(file.Name) is not null), null, null);
     }
+
+    private bool IsDataRoot(DirectoryInfo? directory) =>
+        directory is not null && string.Equals(Path.TrimEndingDirectorySeparator(directory.FullName),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(environment.DataRoot)), StringComparison.OrdinalIgnoreCase);
 
     private static int SessionNumberOf(FileInfo file, IReadOnlyList<MovementClass> movements) =>
         movements.Select(m => m.TryGetSessionNumber(file.Name)).OfType<int>().DefaultIfEmpty(0).Max();

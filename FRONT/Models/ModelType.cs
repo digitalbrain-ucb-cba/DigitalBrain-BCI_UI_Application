@@ -1,29 +1,26 @@
 namespace DigitalBrain.UI.Models;
 
 /// <summary>
-/// Tipo de entrenamiento al que pertenece un sujeto. Va como prefijo en el nombre de su carpeta (<c>ModelMI_Arturo</c>),
-/// y de ahí pasa al nombre del modelo entrenado. El separador evita confundir <c>ModelM</c> + <c>Iguel</c> con <c>ModelMI</c> + <c>guel</c>.
+/// Tipo de entrenamiento. Cada sujeto tiene una subcarpeta por tipo (<c>datos/Arturo/MI/</c>) con sus movimientos y modelos;
+/// se crea al elegir el tipo en Capturar.
 /// </summary>
-/// <param name="Prefix">Abreviatura con que se guarda.</param>
-/// <param name="DisplayName">Nombre visible.</param>
-public sealed record ModelType(string Prefix, string DisplayName)
+/// <param name="Folder">Nombre de la subcarpeta del sujeto y abreviatura visible.</param>
+/// <param name="DisplayName">Nombre completo.</param>
+public sealed record ModelType(string Folder, string DisplayName)
 {
-    private const char Separator = '_';
+    public static readonly ModelType MotorImagery = new("MI", "Motor Imagery");
+    public static readonly ModelType MotorMovement = new("M", "Motor Movement");
 
-    public static readonly IReadOnlyList<ModelType> All = [new("ModelMI", "Motor Imagery"), new("ModelM", "Motor Movement")];
+    public static readonly IReadOnlyList<ModelType> All = [MotorImagery, MotorMovement];
 
-    /// <summary>Tipo de un sujeto según su prefijo, o <c>null</c> si su carpeta no lleva ninguno.</summary>
-    public static ModelType? Of(string? subject) =>
-        All.FirstOrDefault(type => subject?.StartsWith(type.Prefix + Separator, StringComparison.OrdinalIgnoreCase) == true);
+    /// <summary>
+    /// Prefijo con que se guardaban antes los sujetos (<c>ModelMI_Arturo</c>); solo lo usa la migración a la organización actual.
+    /// </summary>
+    public string LegacyPrefix => $"Model{Folder}_";
 
-    /// <summary>Añade el prefijo sin duplicarlo; un nombre vacío sigue vacío para que la validación lo rechace.</summary>
-    public string Apply(string? name)
-    {
-        var normalized = CatalogNames.Normalize(name);
-        if (Of(normalized) is { } current)
-            normalized = normalized[(current.Prefix.Length + 1)..].TrimStart();
-        return normalized.Length == 0 ? "" : $"{Prefix}{Separator}{normalized}";
-    }
+    /// <summary>Tipo cuya carpeta es <paramref name="folder"/>, o <c>null</c> si no es la de ningún tipo.</summary>
+    public static ModelType? FromFolder(string? folder) =>
+        All.FirstOrDefault(type => string.Equals(type.Folder, folder, StringComparison.OrdinalIgnoreCase));
 
-    public override string ToString() => DisplayName;
+    public override string ToString() => $"{Folder} · {DisplayName}";
 }

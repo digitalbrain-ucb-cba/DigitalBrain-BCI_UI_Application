@@ -324,6 +324,60 @@
         </Setter>
     </Style>
 
+    <!-- Cuadros para elegir una opción de dos o más (tipo de entrenamiento MI / M): ItemsSource de ModelType -->
+    <Style x:Key="OptionCardItemStyle" TargetType="ListBoxItem">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Margin" Value="5,0" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Card" Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource InputBorderBrush}"
+                            BorderThickness="1.5" CornerRadius="10" Padding="14,10">
+                        <StackPanel>
+                            <TextBlock x:Name="Short" Text="{Binding Folder}" FontSize="22" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Text="{Binding DisplayName}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource InputFocusBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Short" Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Card" Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="OptionCardsStyle" TargetType="ListBox">
+        <Setter Property="SelectionMode" Value="Single" />
+        <Setter Property="Margin" Value="-5,0" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource OptionCardItemStyle}" />
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <UniformGrid Rows="1" />
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <ItemsPresenter />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Aviso bajo un campo; se oculta si no hay texto -->
     <Style x:Key="WarningTextStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="13.5" />

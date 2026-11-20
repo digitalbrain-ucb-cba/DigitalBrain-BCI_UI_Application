@@ -14,8 +14,8 @@ using DigitalBrain.UI.UseCases.Ports;
 namespace DigitalBrain.UI.ViewModels;
 
 /// <summary>
-/// Pantalla «Capturar» (paso 1): elige o añade sujeto y movimiento, graba con el backend en
-/// <c>datos/&lt;sujeto&gt;/movimientos/&lt;movimiento&gt;/</c> y muestra los cuatro canales en vivo.
+/// Pantalla «Capturar» (paso 1): elige o añade sujeto, tipo (MI o M) y movimiento, graba con el backend en
+/// <c>datos/&lt;sujeto&gt;/&lt;MI|M&gt;/movimientos/&lt;movimiento&gt;/</c> y muestra los cuatro canales en vivo.
 /// </summary>
 public partial class CaptureViewModel : BaseViewModel
 {
@@ -38,6 +38,8 @@ public partial class CaptureViewModel : BaseViewModel
     private double _captureFromSeconds = AcquisitionParameters.DefaultCaptureFromSeconds;
     private double _captureDurationSeconds;
     private double _captureTotalSeconds;
+    /// <summary>Sujeto para el que se eligió el tipo: al cambiar a otro hay que volver a elegirlo.</summary>
+    private string? _typeSubject;
 
     public CaptureViewModel(
         RecordSessionUseCase recordSession,
@@ -97,8 +99,8 @@ public partial class CaptureViewModel : BaseViewModel
 
     // ---- Configuración de sesión ----
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(FileNamePreview))] private MovementClass? _selectedMovement;
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(NewSubjectPreview))] private ModelType _selectedModelType = ModelType.All[0];
-    [ObservableProperty] private string? _selectedSubject;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ModelTypeHint))] private ModelType? _selectedModelType;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasSelectedSubject))] private string? _selectedSubject;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(FileNamePreview))] private string _sessionNumberText = "1";
     [ObservableProperty] private string _durationText = "25";
     [ObservableProperty] private string _durationHint = "";
@@ -116,14 +118,15 @@ public partial class CaptureViewModel : BaseViewModel
 
     public bool HasSubjects => Subjects.Count > 0;
     public bool ShowNoSubjectsHint => !HasSubjects && !IsAddingSubject;
-    /// <summary>El tipo lo define el sujeto: solo se elige al añadir uno nuevo.</summary>
-    public bool CanChooseModelType => IsAddingSubject;
-    public string ModelTypeHint => IsAddingSubject
-        ? "Define el prefijo del sujeto nuevo."
-        : "Es el del sujeto elegido; se elige al añadir un sujeto nuevo.";
-    public string NewSubjectPreview => SelectedModelType.Apply(NewSubjectName) is { Length: > 0 } name
-        ? $"Se guardará como {name}."
-        : $"Se guardará con el prefijo {SelectedModelType.Prefix}.";
+    public bool HasSelectedSubject => SelectedSubject is not null;
+    public string ModelTypeHint => SelectedSubject is null
+        ? "Elige o añade primero el sujeto."
+        : SelectedModelType is null
+            ? "Elige MI o M antes de capturar: se creará su carpeta dentro de la del sujeto."
+            : $"Se guarda en {ToDisplayPath(_catalog.TypeDirectory(SelectedSubject, SelectedModelType))}";
+    public string NewSubjectPreview => CatalogNames.Normalize(NewSubjectName) is { Length: > 0 } name
+        ? $"Se creará la carpeta {ToDisplayPath(_catalog.SubjectDirectory(name))}"
+        : "Se creará una carpeta con su nombre; el tipo MI o M se elige después.";
     public string DiscardedSecondsText { get; } = $"{AcquisitionParameters.DefaultCaptureFromSeconds:0} s";
 
     public string FileNamePreview =>
@@ -168,15 +171,39 @@ public partial class CaptureViewModel : BaseViewModel
 
     partial void OnSelectedSubjectChanged(string? value)
     {
-        if (!IsAddingSubject && ModelType.Of(value) is { } type)
-            SelectedModelType = type;
+        // Al recargar la lista el sujeto pasa por null y vuelve: solo con otro sujeto se pide elegir el tipo de nuevo.
+        if (value is not null && !string.Equals(value, _typeSubject, StringComparison.CurrentCultureIgnoreCase))
+            SelectedModelType = null;
+        OnPropertyChanged(nameof(ModelTypeHint));
+        UpdateOutputFolder();
+        SuggestSessionNumber();
+    }
+
+    partial void OnSelectedModelTypeChanged(ModelType? value)
+    {
+        if (value is not null && SelectedSubject is { } subject)
+        {
+            _typeSubject = subject;
+            if (!_catalog.HasType(subject, value))
+            {
+                try
+                {
+                    _catalog.EnsureType(subject, value);
+                    ShowMessage($"Carpeta {ToDisplayPath(_catalog.TypeDirectory(subject, value))} creada con sus carpetas de movimientos y modelos.");
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    ShowMessage($"No se pudo crear la carpeta {value.Folder} de {subject}: {ex.Message}", isError: true);
+                }
+            }
+        }
         UpdateOutputFolder();
         SuggestSessionNumber();
     }
 
     private void UpdateOutputFolder() =>
-        OutputFolder = SelectedMovement is not null && SelectedSubject is not null
-            ? ToDisplayPath(_catalog.MovementDirectory(SelectedSubject, SelectedMovement))
+        OutputFolder = SelectedMovement is not null && SelectedSubject is not null && SelectedModelType is not null
+            ? ToDisplayPath(_catalog.MovementDirectory(SelectedSubject, SelectedModelType, SelectedMovement))
             : "";
 
     partial void OnDurationTextChanged(string value) => UpdateDurationTexts();
@@ -195,15 +222,7 @@ public partial class CaptureViewModel : BaseViewModel
 
     partial void OnNewSubjectNameChanged(string value) => SubjectWarning = "";
 
-    partial void OnIsAddingSubjectChanged(bool value)
-    {
-        OnPropertyChanged(nameof(ShowNoSubjectsHint));
-        OnPropertyChanged(nameof(CanChooseModelType));
-        OnPropertyChanged(nameof(ModelTypeHint));
-        // Al cancelar, el tipo vuelve a ser el del sujeto elegido.
-        if (!value && ModelType.Of(SelectedSubject) is { } type)
-            SelectedModelType = type;
-    }
+    partial void OnIsAddingSubjectChanged(bool value) => OnPropertyChanged(nameof(ShowNoSubjectsHint));
 
     private void OnStatusChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -219,6 +238,11 @@ public partial class CaptureViewModel : BaseViewModel
             ShowMessage("Elige o añade primero el sujeto: los movimientos se guardan en su carpeta.", isError: true);
             return;
         }
+        if (SelectedModelType is null)
+        {
+            ShowMessage("Elige primero MI o M: el movimiento se guarda en la carpeta de ese tipo.", isError: true);
+            return;
+        }
         NewMovementName = "";
         MovementWarning = "";
         IsAddingMovement = true;
@@ -227,8 +251,8 @@ public partial class CaptureViewModel : BaseViewModel
     [RelayCommand]
     private void ConfirmAddMovement()
     {
-        if (SelectedSubject is null) return;
-        var result = _catalog.AddMovement(SelectedSubject, NewMovementName);
+        if (SelectedSubject is null || SelectedModelType is null) return;
+        var result = _catalog.AddMovement(SelectedSubject, SelectedModelType, NewMovementName);
         if (!result.Succeeded)
         {
             MovementWarning = result.AlreadyExists
@@ -259,7 +283,7 @@ public partial class CaptureViewModel : BaseViewModel
     [RelayCommand]
     private void ConfirmAddSubject()
     {
-        var result = _catalog.AddSubject(SelectedModelType.Apply(NewSubjectName));
+        var result = _catalog.AddSubject(NewSubjectName);
         if (!result.Succeeded)
         {
             SubjectWarning = result.AlreadyExists
@@ -270,7 +294,7 @@ public partial class CaptureViewModel : BaseViewModel
 
         ReloadSubjects(keep: result.Value);
         IsAddingSubject = false;
-        ShowMessage($"Sujeto «{result.Value}» creado en {ToDisplayPath(_catalog.SubjectDirectory(result.Value!))} con sus carpetas de movimientos y modelos.");
+        ShowMessage($"Sujeto «{result.Value}» creado en {ToDisplayPath(_catalog.SubjectDirectory(result.Value!))}. Elige MI o M para crear la carpeta del tipo.");
     }
 
     [RelayCommand]
@@ -481,8 +505,7 @@ public partial class CaptureViewModel : BaseViewModel
         Subjects.Clear();
         try
         {
-            // Solo los que tienen tipo: una captura nueva nunca debe caer en una carpeta sin prefijo.
-            foreach (var subject in _catalog.GetSubjects().Where(s => ModelType.Of(s) is not null))
+            foreach (var subject in _catalog.GetSubjects())
                 Subjects.Add(subject);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -501,8 +524,8 @@ public partial class CaptureViewModel : BaseViewModel
 
     private void SuggestSessionNumber()
     {
-        if (SelectedMovement is null || SelectedSubject is null || IsCapturing) return;
-        var directory = _catalog.MovementDirectory(SelectedSubject, SelectedMovement);
+        if (SelectedMovement is null || SelectedSubject is null || SelectedModelType is null || IsCapturing) return;
+        var directory = _catalog.MovementDirectory(SelectedSubject, SelectedModelType, SelectedMovement);
         SessionNumberText = _recordings.NextSessionNumber(SelectedMovement, directory).ToString(CultureInfo.InvariantCulture);
         RecordingFile = FileNamePreview;
     }
@@ -512,6 +535,11 @@ public partial class CaptureViewModel : BaseViewModel
         if (SelectedSubject is null)
         {
             ShowMessage("Elige el sujeto o añade uno nuevo con «+».", isError: true);
+            return null;
+        }
+        if (SelectedModelType is not { } type)
+        {
+            ShowMessage("Elige MI o M antes de capturar.", isError: true);
             return null;
         }
         if (SelectedMovement is null)
@@ -534,7 +562,7 @@ public partial class CaptureViewModel : BaseViewModel
             SelectedSubject, SelectedMovement, session, duration,
             string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim(),
             ExecutablePath.Trim().Trim('"'),
-            _catalog.MovementDirectory(SelectedSubject, SelectedMovement));
+            _catalog.MovementDirectory(SelectedSubject, type, SelectedMovement));
     }
 
     private double? ParseDuration() =>
