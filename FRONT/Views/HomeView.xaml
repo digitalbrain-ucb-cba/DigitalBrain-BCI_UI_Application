@@ -160,7 +160,7 @@
                                     </Style>
                                 </Ellipse.Style>
                             </Ellipse>
-                            <TextBlock Text="CAPTURADOR" Style="{StaticResource TileLabelStyle}" />
+                            <TextBlock Text="DISPOSITIVO" Style="{StaticResource TileLabelStyle}" />
                         </StackPanel>
                         <TextBlock Text="{Binding DeviceStatusText}" FontFamily="{StaticResource DisplayFont}" FontSize="28" FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}" />

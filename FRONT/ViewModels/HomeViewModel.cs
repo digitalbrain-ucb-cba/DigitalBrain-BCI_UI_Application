@@ -32,6 +32,7 @@ public partial class HomeViewModel : BaseViewModel
     private readonly IModelStore _models;
     private readonly ISettingsStore _settings;
     private bool _hasRecordings;
+    private bool _hasCaptureExecutable;
 
     public HomeViewModel(
         INavigationService navigationService,
@@ -116,7 +117,8 @@ public partial class HomeViewModel : BaseViewModel
 
     private void OnStatusChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(SystemStatusViewModel.IsCapturing) or nameof(SystemStatusViewModel.IsPredicting) or nameof(SystemStatusViewModel.IsTraining))
+        if (e.PropertyName is nameof(SystemStatusViewModel.IsCapturing) or nameof(SystemStatusViewModel.IsPredicting) or nameof(SystemStatusViewModel.IsTraining)
+            or nameof(SystemStatusViewModel.IsHeadsetConnected) or nameof(SystemStatusViewModel.ConnectedPortName))
         {
             UpdateDevice();
             UpdateSteps();
@@ -162,13 +164,15 @@ public partial class HomeViewModel : BaseViewModel
     private void UpdateDevice()
     {
         var executable = _settings.Load().CaptureExecutablePath;
-        var found = File.Exists(executable);
-        (DeviceStatusText, DeviceStatusDetail, IsDeviceReady) = (Status.IsCapturing, Status.IsPredicting, found) switch
+        _hasCaptureExecutable = File.Exists(executable);
+        var port = string.IsNullOrWhiteSpace(Status.ConnectedPortName) ? "USB" : $"Puerto {Status.ConnectedPortName} · USB";
+        (DeviceStatusText, DeviceStatusDetail, IsDeviceReady) = (Status.IsCapturing, Status.IsPredicting, _hasCaptureExecutable, Status.IsHeadsetConnected) switch
         {
-            (true, _, _) => ("Grabando", "Captura en curso", true),
-            (_, true, _) => ("Prediciendo", "Clasificación en vivo", true),
-            (_, _, true) => ("Listo", $"{Path.GetFileName(executable)} encontrado", true),
-            _ => ("No encontrado", "Revisa la ruta en Capturar", false),
+            (true, _, _, _) => ("Grabando", "Captura en curso", true),
+            (_, true, _, _) => ("Prediciendo", "Clasificación en vivo", true),
+            (_, _, false, _) => ("Sin capturador", "Revisa la ruta en Capturar", false),
+            (_, _, true, true) => ("Conectado", port, true),
+            _ => ("Desconectado", "Conecta el casco por USB", false),
         };
     }
 
@@ -182,12 +186,13 @@ public partial class HomeViewModel : BaseViewModel
         RealtimeStep = Status.IsPredicting ? StepStatus.Running
             : HasTrainedModel && IsDeviceReady ? StepStatus.Next
             : StepStatus.Pending;
+        var missingDevice = _hasCaptureExecutable ? "conectar el casco" : "el capturador";
         RealtimeSummary = (HasTrainedModel, IsDeviceReady) switch
         {
-            (true, true) => "Modelo y capturador listos",
+            (true, true) => "Modelo y casco listos",
             (false, true) => "Falta entrenar un modelo",
-            (true, false) => "Falta el capturador",
-            _ => "Faltan el modelo y el capturador",
+            (true, false) => $"Falta {missingDevice}",
+            _ => $"Faltan el modelo y {missingDevice}",
         };
     }
 
