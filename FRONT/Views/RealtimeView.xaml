@@ -38,14 +38,36 @@
                         <TextBlock Text="Ventanas de 125 muestras con una decisión nueva cada 63 muestras (0,5 s). El envío de comandos al robot UGOT todavía no está conectado."
                                    FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="24" />
 
-                        <TextBlock Text="MODELO" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
-                        <DockPanel IsEnabled="{Binding IsPredicting, Converter={StaticResource InverseBool}}">
-                            <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Margin="10,0,0,0"
-                                    Command="{Binding BrowseModelCommand}" ToolTip="Buscar el modelo" />
-                            <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Models}"
-                                      SelectedItem="{Binding SelectedModel}" DisplayMemberPath="Name"
-                                      ToolTip="{Binding SelectedModel.FilePath}" />
-                        </DockPanel>
+                        <!-- Sujeto, tipo y modelo: igual que en Entrenar -->
+                        <StackPanel IsEnabled="{Binding IsPredicting, Converter={StaticResource InverseBool}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="SUJETO" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
+                                    <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Subjects}" SelectedItem="{Binding SelectedSubject}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="TIPO DE ENTRENAMIENTO" Style="{StaticResource FieldLabelStyle}" Margin="0,22,0,6" />
+                                    <ListBox Style="{StaticResource OptionCardsStyle}" ItemsSource="{Binding ModelTypes}"
+                                             SelectedItem="{Binding SelectedModelType}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="MODELO" Style="{StaticResource FieldLabelStyle}" Margin="0,16,0,6" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButtonStyle}" Margin="10,0,0,0"
+                                        Command="{Binding BrowseModelCommand}" ToolTip="Buscar otro modelo .pkl" />
+                                <ComboBox Style="{StaticResource ComboStyle}" ItemsSource="{Binding Models}"
+                                          SelectedItem="{Binding SelectedModel}" DisplayMemberPath="Name"
+                                          ToolTip="{Binding SelectedModel.FilePath}" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding SelectedModelDetail}" Style="{StaticResource HintTextStyle}" />
+                            <TextBlock Text="{Binding ModelHint}" Style="{StaticResource WarningTextStyle}" />
+                        </StackPanel>
 
                         <Grid Margin="0,24,0,0">
                             <Grid.ColumnDefinitions>

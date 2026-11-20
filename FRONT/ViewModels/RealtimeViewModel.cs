@@ -23,7 +23,7 @@ public sealed record ModelOption(string FilePath)
 public sealed record PredictionItem(string NumberText, string Name, string AccentHex, string ConfidenceText);
 
 /// <summary>
-/// Pantalla «Tiempo real» (paso 3): lanza el capturador con el modelo elegido y muestra la clase de las últimas
+/// Pantalla «Tiempo real» (paso 3): elige sujeto, tipo (MI o M) y uno de sus modelos, lanza el capturador con él y muestra la clase de las últimas
 /// ventanas con la confianza del modelo en cada una. En vivo no se conoce el movimiento real, así que esa confianza
 /// es lo único que se puede mostrar: no es una exactitud medida.
 /// El envío de comandos al robot UGOT todavía no está conectado.
@@ -46,6 +46,10 @@ public partial class RealtimeViewModel : BaseViewModel
     private CancellationTokenSource? _predictionCts;
     private Dictionary<string, MovementClass> _movements = [];
     private int _predictionCount;
+    /// <summary>Modelos de la lista actual, para mostrar los datos de su entrenamiento.</summary>
+    private IReadOnlyList<ModelInfo> _listedModels = [];
+    /// <summary>Al recargar los sujetos se fija el tipo a mano: entonces el cambio de sujeto no debe elegir otro.</summary>
+    private bool _isReloading;
 
     public RealtimeViewModel(
         INavigationService navigationService,
@@ -70,12 +74,18 @@ public partial class RealtimeViewModel : BaseViewModel
     }
 
     public SystemStatusViewModel Status { get; }
+    public ObservableCollection<string> Subjects { get; } = [];
+    public IReadOnlyList<ModelType> ModelTypes => ModelType.All;
     public ObservableCollection<ModelOption> Models { get; } = [];
     /// <summary>Últimas predicciones, la más reciente primero.</summary>
     public ObservableCollection<PredictionItem> RecentPredictions { get; } = [];
 
     [ObservableProperty] private string _executablePath = "";
+    [ObservableProperty] private string? _selectedSubject;
+    [ObservableProperty] private ModelType _selectedModelType = ModelType.All[0];
     [ObservableProperty] private ModelOption? _selectedModel;
+    [ObservableProperty] private string _modelHint = "";
+    [ObservableProperty] private string _selectedModelDetail = "";
     [ObservableProperty] private bool _isPredicting;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(ToggleText))] private bool _isStopping;
     [ObservableProperty] private string _currentPrediction = NoPrediction;
@@ -91,27 +101,106 @@ public partial class RealtimeViewModel : BaseViewModel
     {
         // La ruta del capturador se cambia en la pantalla Capturar.
         ExecutablePath = _settings.Load().CaptureExecutablePath;
-        if (!IsPredicting) ReloadModels();
+        if (!IsPredicting) ReloadSubjects();
     }
 
-    /// <summary>Lista los modelos de todos los sujetos; conserva el elegido, aunque venga de otra carpeta, o toma el más reciente.</summary>
-    private void ReloadModels()
+    /// <summary>
+    /// Lista los sujetos que tienen algún modelo. Conserva sujeto, tipo y modelo elegidos; la primera vez toma los del modelo
+    /// más reciente.
+    /// </summary>
+    private void ReloadSubjects()
     {
-        var selected = SelectedModel;
+        IReadOnlyList<ModelInfo> all;
+        try
+        {
+            all = _models.GetAllModels();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowMessage($"No se pudieron leer los modelos de {_environment.DataRoot}: {ex.Message}", isError: true);
+            all = [];
+        }
+
+        var keepModel = SelectedModel;
+        var latest = all.FirstOrDefault(m => m.Subject is not null && m.Type is not null);
+        var keepSubject = SelectedSubject ?? latest?.Subject;
+        var keepType = SelectedSubject is null && latest?.Type is { } latestType ? latestType : SelectedModelType;
+
+        _isReloading = true;
+        try
+        {
+            Subjects.Clear();
+            foreach (var subject in all.Where(m => m.Type is not null).Select(m => m.Subject).OfType<string>()
+                         .Distinct(StringComparer.CurrentCultureIgnoreCase).Order(StringComparer.CurrentCultureIgnoreCase))
+                Subjects.Add(subject);
+
+            SelectedModelType = keepType;
+            // Forzar la recarga aunque el sujeto no cambie: sus modelos pudieron cambiar fuera.
+            SelectedSubject = null;
+            SelectedSubject = Subjects.FirstOrDefault(s => string.Equals(s, keepSubject, StringComparison.CurrentCultureIgnoreCase))
+                              ?? Subjects.FirstOrDefault();
+        }
+        finally
+        {
+            _isReloading = false;
+        }
+        PickTypeWithModels();
+        ReloadModels(keepModel ?? (latest is null ? null : new ModelOption(latest.FilePath)));
+    }
+
+    partial void OnSelectedSubjectChanged(string? value)
+    {
+        if (_isReloading) return;
+        PickTypeWithModels();
+        ReloadModels(keep: null);
+    }
+
+    partial void OnSelectedModelTypeChanged(ModelType value)
+    {
+        if (!_isReloading) ReloadModels(keep: null);
+    }
+
+    /// <summary>Si el sujeto no tiene modelos del tipo elegido pero sí del otro, elige ese.</summary>
+    private void PickTypeWithModels()
+    {
+        if (SelectedSubject is not { } subject || _models.GetModels(subject, SelectedModelType).Count > 0) return;
+        if (ModelType.All.FirstOrDefault(type => _models.GetModels(subject, type).Count > 0) is { } available)
+        {
+            _isReloading = true;
+            SelectedModelType = available;
+            _isReloading = false;
+        }
+    }
+
+    /// <summary>Lista los modelos del sujeto y tipo elegidos; conserva <paramref name="keep"/> si está o toma el más reciente.</summary>
+    private void ReloadModels(ModelOption? keep)
+    {
+        _listedModels = SelectedSubject is { } subject ? _models.GetModels(subject, SelectedModelType) : [];
         Models.Clear();
-        foreach (var model in _models.GetAllModels())
+        foreach (var model in _listedModels)
             Models.Add(new ModelOption(model.FilePath));
-        if (selected is not null && !Models.Contains(selected) && File.Exists(selected.FilePath))
-            Models.Add(selected);
-        SelectedModel = Models.Contains(selected!) ? selected : Models.FirstOrDefault();
+        SelectedModel = Models.FirstOrDefault(m => m == keep) ?? Models.FirstOrDefault();
+
+        ModelHint = SelectedSubject is null
+            ? "Aún no hay modelos: entrena uno en Entrenar."
+            : Models.Count == 0
+                ? $"{SelectedSubject} no tiene modelos {SelectedModelType.Folder}: entrénalo en Entrenar."
+                : "";
     }
 
     partial void OnSelectedModelChanged(ModelOption? value)
     {
+        var info = _listedModels.FirstOrDefault(m => value is not null && m.FilePath == value.FilePath);
+        SelectedModelDetail = info is null
+            ? value is null ? "" : "Modelo elegido a mano"
+            : string.Join(" · ", new[]
+            {
+                info.Algorithm?.DisplayName,
+                info.Accuracy is { } accuracy ? $"exactitud {accuracy.ToString("P1", Es)}" : null,
+                info.TrainedAt.ToString("dd/MM/yy HH:mm", Es),
+            }.OfType<string>());
         if (value is not null)
-        {
             Status.RefreshModel(value.FilePath);
-        }
     }
 
     partial void OnIsPredictingChanged(bool value)
@@ -132,8 +221,21 @@ public partial class RealtimeViewModel : BaseViewModel
         if (_dialogs.PickModel(SelectedModel?.FilePath ?? _environment.DataRoot + Path.DirectorySeparatorChar) is not { } path)
             return;
         var model = new ModelOption(path);
+        // Si es de la carpeta de un sujeto, se elige ese sujeto y tipo; si no, se añade a la lista actual.
+        var known = _models.GetAllModels().FirstOrDefault(m => m.Type is not null &&
+            string.Equals(Path.GetFullPath(m.FilePath), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase));
+        if (known is { Subject: { } subject, Type: { } type })
+        {
+            _isReloading = true;
+            SelectedModelType = type;
+            SelectedSubject = Subjects.FirstOrDefault(s => string.Equals(s, subject, StringComparison.CurrentCultureIgnoreCase));
+            _isReloading = false;
+            ReloadModels(new ModelOption(known.FilePath));
+            return;
+        }
         if (!Models.Contains(model)) Models.Add(model);
         SelectedModel = model;
+        ModelHint = "";
     }
 
     [RelayCommand(AllowConcurrentExecutions = true, CanExecute = nameof(CanTogglePrediction))]
