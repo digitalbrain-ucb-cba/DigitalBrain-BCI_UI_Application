@@ -226,7 +226,8 @@ public partial class CaptureViewModel : BaseViewModel
 
     private void OnStatusChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(SystemStatusViewModel.IsTraining) or nameof(SystemStatusViewModel.IsPredicting))
+        if (e.PropertyName is nameof(SystemStatusViewModel.IsTraining) or nameof(SystemStatusViewModel.IsPredicting)
+            or nameof(SystemStatusViewModel.IsMonitoring))
             ToggleCaptureCommand.NotifyCanExecuteChanged();
     }
 
@@ -390,7 +391,7 @@ public partial class CaptureViewModel : BaseViewModel
         }
     }
 
-    private bool CanToggleCapture() => !Status.IsTraining && !Status.IsPredicting;
+    private bool CanToggleCapture() => IsCapturing || (!Status.IsTraining && !Status.IsPredicting && !Status.IsMonitoring);
 
     private void OnSample(SignalSample sample)
     {

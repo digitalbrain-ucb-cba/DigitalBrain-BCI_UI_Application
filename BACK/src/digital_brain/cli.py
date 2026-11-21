@@ -53,6 +53,20 @@ def main() -> None:
         help="Nombre del ejecutable dentro de la carpeta (por defecto: ConDumpAuto.exe).",
     )
     predict_command.add_argument("--sample-rate", type=float, default=125.0, help="Hz; debe ser la del entrenamiento (por defecto: 125).")
+    monitor_command = commands.add_parser(
+        "monitor",
+        help="Transmite en vivo las muestras del capturador (también las saturadas) sin guardarlas, hasta escribir «stop».",
+    )
+    monitor_command.add_argument(
+        "program_directory",
+        type=Path,
+        help="Carpeta externa que contiene el ejecutable y sus archivos auxiliares.",
+    )
+    monitor_command.add_argument(
+        "--executable-name",
+        default="ConDumpAuto.exe",
+        help="Nombre del ejecutable dentro de la carpeta (por defecto: ConDumpAuto.exe).",
+    )
     arguments = parser.parse_args()
     if arguments.command == "build-dataset":
         dataset = build_dataset(arguments.input_directory, arguments.output_path, arguments.label, _extractor(arguments.sample_rate))
@@ -86,6 +100,21 @@ def main() -> None:
         except RuntimeError as error:
             predict_command.exit(1, f"{error}\n")
         print("Predicción detenida.", flush=True)
+    elif arguments.command == "monitor":
+        try:
+            executable_path = _resolve_capture_executable(arguments.program_directory, arguments.executable_name)
+        except (NotADirectoryError, FileNotFoundError, ValueError) as error:
+            monitor_command.error(str(error))
+        try:
+            capture = ExecutableCapture(executable_path)
+            Thread(target=_stop_when_requested, args=(capture,), name="parada", daemon=True).start()
+            for sample in capture.stream_samples(lambda message: print(message, flush=True), include_saturated=True):
+                print(",".join(f"{value:g}" for value in sample), flush=True)
+        except KeyboardInterrupt:
+            pass
+        except RuntimeError as error:
+            monitor_command.exit(1, f"{error}\n")
+        print("Monitor detenido.", flush=True)
     else:
         score = train_classifier(arguments.datasets, arguments.model_path, algorithm=arguments.algorithm)
         print(f"Modelo {arguments.algorithm} guardado en {arguments.model_path}; exactitud: {score:.3f}")

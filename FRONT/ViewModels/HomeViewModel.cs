@@ -118,6 +118,7 @@ public partial class HomeViewModel : BaseViewModel
     private void OnStatusChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(SystemStatusViewModel.IsCapturing) or nameof(SystemStatusViewModel.IsPredicting) or nameof(SystemStatusViewModel.IsTraining)
+            or nameof(SystemStatusViewModel.IsMonitoring)
             or nameof(SystemStatusViewModel.IsHeadsetConnected) or nameof(SystemStatusViewModel.ConnectedPortName))
         {
             UpdateDevice();
@@ -170,6 +171,7 @@ public partial class HomeViewModel : BaseViewModel
         {
             (true, _, _, _) => ("Grabando", "Captura en curso", true),
             (_, true, _, _) => ("Prediciendo", "Clasificación en vivo", true),
+            _ when Status.IsMonitoring => ("En el osciloscopio", "Señal en vivo, sin grabar", true),
             (_, _, false, _) => ("Sin capturador", "Revisa la ruta en Capturar", false),
             (_, _, true, true) => ("Conectado", port, true),
             _ => ("Desconectado", "Conecta el casco por USB", false),

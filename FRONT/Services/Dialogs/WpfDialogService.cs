@@ -28,6 +28,17 @@ public sealed class WpfDialogService : IDialogService
         return dialog.ShowDialog() == true ? dialog.FileName : null;
     }
 
+    public string? PickRecording(string? initialPath)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Selecciona una grabación",
+            Filter = "Capturas (*.txt)|*.txt",
+            InitialDirectory = ExistingDirectory(Path.GetDirectoryName(initialPath ?? "")),
+        };
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
     public string? PickFolder(string? initialPath)
     {
         var dialog = new OpenFolderDialog

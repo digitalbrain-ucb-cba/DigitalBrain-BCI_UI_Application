@@ -12,6 +12,7 @@ Actualmente, WPF se integra con la CLI de Python (`PythonCliBridge`) para operac
 | Crear CSV | Comando `build-dataset` | Solo argumentos y resultado de texto. |
 | Entrenar | Comando `train` con `--algorithm` | Solo argumentos y exactitud impresa. |
 | Predecir ventanas | Comando `predict` | `PythonCliRealtimeGateway` lee las líneas `Predicción: etiqueta | confianza: 87.0%`; para detenerlo escribe `stop` por stdin, de modo que el capturador libere el casco, y a los 6 s cierra el árbol de procesos si sigue abierto. |
+| Ver la señal en vivo | Comando `monitor` | `PythonCliMonitorGateway` lee una línea `a,b,c,d` por muestra, incluidas las saturadas (`stream_samples(include_saturated=True)`); se detiene igual que `predict`, escribiendo `stop` por stdin. No guarda archivo. |
 
 ## Contrato por definir
 

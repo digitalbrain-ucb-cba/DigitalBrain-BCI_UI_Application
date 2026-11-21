@@ -27,6 +27,9 @@
             <DataTemplate DataType="{x:Type vm:RealtimeViewModel}">
                 <views:RealtimeView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:OscilloscopeViewModel}">
+                <views:OscilloscopeView />
+            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -22,11 +22,12 @@ def is_complete_sample(line: str) -> bool:
     return len(values) == 4 and all(_NUMBER.fullmatch(value.strip()) for value in values)
 
 
-def parse_sample(line: str) -> tuple[float, float, float, float] | None:
+def parse_sample(line: str, include_saturated: bool = False) -> tuple[float, float, float, float] | None:
+    """Lee una línea completa; por defecto descarta las que tienen algún canal en ±800 µV (saturado)."""
     if not is_complete_sample(line):
         return None
     sample = tuple(float(value) for value in line.strip().split(","))
-    if any(value in {-800, 800} for value in sample):
+    if not include_saturated and any(value in {-800, 800} for value in sample):
         return None
     return sample
 
@@ -98,18 +99,24 @@ class ExecutableCapture:
         self._process: subprocess.Popen[bytes] | None = None
         self._stop_requested = Event()
 
-    def stream_samples(self, on_message: Callable[[str], None] = print) -> Iterator[tuple[float, float, float, float]]:
+    def stream_samples(
+        self,
+        on_message: Callable[[str], None] = print,
+        include_saturated: bool = False,
+    ) -> Iterator[tuple[float, float, float, float]]:
         """Entrega en vivo las mismas muestras que ``read_samples`` leería de un archivo; relanza el capturador si termina.
 
         Las líneas que no son muestras (estado del casco, cabeceras) van a ``on_message``. Si una ejecución
         termina sin ninguna muestra válida no se relanza, porque sin casco se repetiría indefinidamente.
+        Con ``include_saturated`` también entrega las muestras con algún canal en ±800 µV, que el osciloscopio
+        necesita para mostrar la saturación; la clasificación nunca las usa.
         """
         if not self.executable_path.is_file():
             raise FileNotFoundError(f"No se encontró el ejecutable: {self.executable_path}")
         while not self._stop_requested.is_set():
             received = 0
             for line in self._run_lines():
-                sample = parse_sample(line)
+                sample = parse_sample(line, include_saturated)
                 if sample is not None:
                     received += 1
                     yield sample

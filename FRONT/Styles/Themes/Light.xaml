@@ -36,4 +36,17 @@
     <SolidColorBrush x:Key="Channel3Brush" Color="#1F2A3A" />
     <SolidColorBrush x:Key="Channel4Brush" Color="#C49A3A" />
     <SolidColorBrush x:Key="ValidSamplesBrush" Color="#3F5A70" />
+
+    <!-- Osciloscopio: pantalla, cuadrícula y saturación -->
+    <SolidColorBrush x:Key="ScopeBackgroundBrush" Color="#F5F0E6" />
+    <SolidColorBrush x:Key="ScopeGridBrush" Color="#E6DECD" />
+    <SolidColorBrush x:Key="ScopeGridMajorBrush" Color="#CFC3AA" />
+    <SolidColorBrush x:Key="SaturationBrush" Color="#C0392B" />
+
+    <!-- Bandas del EEG (espectro y barras de potencia) -->
+    <SolidColorBrush x:Key="BandDeltaBrush" Color="#7A6FA8" />
+    <SolidColorBrush x:Key="BandThetaBrush" Color="#3F8C8C" />
+    <SolidColorBrush x:Key="BandAlphaBrush" Color="#6A9A4E" />
+    <SolidColorBrush x:Key="BandBetaBrush" Color="#C49A3A" />
+    <SolidColorBrush x:Key="BandGammaBrush" Color="#B5654A" />
 </ResourceDictionary>

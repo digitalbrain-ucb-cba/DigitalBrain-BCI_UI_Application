@@ -191,6 +191,38 @@
 
                     <TextBlock Text="SISTEMA" Style="{StaticResource SidebarSection}" />
 
+                    <Button Command="{Binding NavigateScopeCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsScopeActive}" Value="True">
+                                        <Setter Property="Tag" Value="Active" />
+                                        <Setter Property="Foreground" Value="{DynamicResource SidebarActiveTextBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconScope}" Margin="0,0,20,0">
+                                <Path.Style>
+                                    <Style TargetType="Path" BasedOn="{StaticResource IconStyle}">
+                                        <Setter Property="Stroke" Value="{DynamicResource SidebarTextBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsScopeActive}" Value="True">
+                                                <Setter Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+                            <StackPanel>
+                                <TextBlock Text="Osciloscopio" Style="{StaticResource NavTitle}" FontWeight="SemiBold" />
+                                <TextBlock Text="Señal y espectro en vivo" Style="{StaticResource NavSubtitle}"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Opacity="0.75" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Button>
+
                     <Button Command="{Binding NavigateDatabaseCommand}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource NavButtonStyle}">

@@ -223,6 +223,15 @@ class StopTests(unittest.TestCase):
                 self.assertEqual(list(capture.stream_samples(stop_on_first_message)), [])
         self.assertEqual(fake.launches, 1)
 
+    def test_saturated_samples_are_streamed_only_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            fake = FakeCapturer(Path(temporary_directory), ["-800,799.976,-800,-800", "1.5,2,3,4"])
+            with patch("subprocess.Popen", fake):
+                stream = ExecutableCapture(fake.executable).stream_samples(lambda _: None, include_saturated=True)
+                samples = [next(stream), next(stream)]
+                stream.close()
+        self.assertEqual(samples, [(-800.0, 799.976, -800.0, -800.0), (1.5, 2.0, 3.0, 4.0)])
+
     def test_capturer_errors_share_the_output_pipe(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             fake = FakeCapturer(Path(temporary_directory), [])
@@ -294,6 +303,40 @@ class PredictCliTests(unittest.TestCase):
                     cli.main()
             popen.assert_not_called()
             self.assertIn("No se encontró el modelo", errors.getvalue())
+
+
+class MonitorCliTests(unittest.TestCase):
+    def test_monitor_prints_every_sample_including_saturated_ones_until_interrupted(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            (directory / "ConDumpAuto.exe").touch()
+            received: dict[str, object] = {}
+
+            def stream(_self: ExecutableCapture, on_message: object, include_saturated: bool = False) -> object:
+                received["include_saturated"] = include_saturated
+                on_message("I(0) LINK: Link CONNECTED")
+                yield (-800.0, 799.976, -800.0, -800.0)
+                yield (1.5, -2.25, 3.0, 4.0)
+                raise KeyboardInterrupt
+
+            arguments = ["digital-brain", "monitor", str(directory)]
+            with patch("sys.argv", arguments), patch.object(ExecutableCapture, "stream_samples", stream):
+                with redirect_stdout(StringIO()) as output:
+                    cli.main()
+        self.assertTrue(received["include_saturated"])
+        self.assertEqual(
+            output.getvalue().splitlines(),
+            ["I(0) LINK: Link CONNECTED", "-800,799.976,-800,-800", "1.5,-2.25,3,4", "Monitor detenido."],
+        )
+
+    def test_monitor_fails_before_launching_when_the_executable_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            arguments = ["digital-brain", "monitor", temporary_directory]
+            with patch("sys.argv", arguments), patch("subprocess.Popen") as popen:
+                with patch("sys.stderr", StringIO()) as errors, self.assertRaises(SystemExit):
+                    cli.main()
+            popen.assert_not_called()
+            self.assertIn("No se encontró ConDumpAuto.exe", errors.getvalue())
 
 
 if __name__ == "__main__":

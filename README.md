@@ -10,7 +10,7 @@ DigitalBrain procesa capturas de cuatro canales, extrae características espectr
 | Preparación de datos | La CLI convierte archivos `.txt` en CSV con 16 características por ventana y una etiqueta. |
 | Entrenamiento | La CLI entrena Random Forest, LDA, SVM, Extra Trees o Gradient Boosting. |
 | Inferencia | El comando `predict` lanza el capturador y clasifica en vivo cada ventana de 125 muestras, con una decisión nueva cada 63. Acepta modelos del proyecto y de `MachineLearning.py`. |
-| Interfaz WPF | **Inicio** resume el estado real del sistema. **Capturar** graba por sujeto con la CLI `capture` y muestra los cuatro canales en vivo. **Entrenar** entrena con `build-dataset` + `train` y gestiona los modelos de cada sujeto. **Tiempo real** lista por nombre los modelos de todos los sujetos, ejecuta `predict` y muestra las últimas 20 predicciones con la confianza del modelo en cada una; el envío de comandos al robot UGOT sigue pendiente. |
+| Interfaz WPF | **Inicio** resume el estado real del sistema. **Capturar** graba por sujeto con la CLI `capture` y muestra los cuatro canales en vivo. **Entrenar** entrena con `build-dataset` + `train` y gestiona los modelos de cada sujeto. **Tiempo real** lista por nombre los modelos de todos los sujetos, ejecuta `predict` y muestra las últimas 20 predicciones con la confianza del modelo en cada una; el envío de comandos al robot UGOT sigue pendiente. **Osciloscopio** muestra en vivo (CLI `monitor`) o desde una grabación la forma de onda filtrada, los pulsos, el espectro FFT y la potencia por banda de cada canal. |
 
 ## Estructura
 
@@ -125,6 +125,21 @@ Al abrirse, la aplicación pasa a esta organización los datos de la anterior: `
 Arriba se elige el **sujeto**; debajo, una fila por movimiento con una casilla para incluirlo y las grabaciones que tiene ese sujeto. Al elegir otro sujeto se marcan todos sus movimientos con grabaciones. Hacen falta al menos dos movimientos marcados con grabaciones. La lista se vuelve a leer al entrar en la pestaña (conservando lo elegido) o con «Actualizar lista». La tarjeta Modelo muestra el algoritmo, el nombre del archivo, el estado y la exactitud del último entrenamiento. Debajo, **Modelos de <sujeto>** lista los modelos de su carpeta con su algoritmo, exactitud y fecha; «Eliminar» pide confirmación y borra el `.pkl` y su `.json`. No se puede entrenar mientras se captura.
 
 El panel Estado indica si llega señal del casco durante la grabación, el modelo más reciente de todos los sujetos y el total de grabaciones.
+
+### Pantalla Osciloscopio
+
+Sirve para comprobar los electrodos antes de grabar, como el «Signal Tester» del fabricante. No guarda nada y sus filtros solo afectan a lo que se ve: las grabaciones y el modelo siguen usando la señal original.
+
+| Zona | Comportamiento |
+| --- | --- |
+| Fuente | **Casco en vivo** ejecuta `python -u -m digital_brain.cli monitor <carpeta del exe> --executable-name ConDumpAuto.exe`, que reenvía cada muestra `a,b,c,d` (también las saturadas) hasta recibir `stop` por stdin. **Grabación** reproduce un `.txt` a la frecuencia de muestreo de Inicio, en bucle. El casco solo puede usarlo un proceso: mientras el osciloscopio está en vivo no se puede capturar ni predecir, y al revés. |
+| Forma de onda | Una franja por canal con su línea base y escala ±2 divisiones. **Barrido**: la traza avanza y reescribe, como un osciloscopio analógico. **Rodante**: la señal se desplaza a la izquierda. **Disparo**: la pantalla se congela en cada pulso detectado, con un 25 % de pre-disparo (marca «T»). Base de tiempo de 0,1 a 2 s/div; amplitud fija o automática (percentil 99 de lo visible). Las franjas rojas marcan muestras en ±800 µV y los triángulos, pulsos. **Congelar** detiene la pantalla sin dejar de recibir. |
+| Filtros | Pasa altos Butterworth de 4.º orden (0,5, 1 o 5 Hz), notch de red (50 o 60 Hz, Q = 25) y pasa bajos Butterworth de 4.º orden (30 o 45 Hz). Durante la saturación se mantiene la última muestra válida para que los filtros no oscilen. Al cambiar un filtro se vuelve a filtrar la historia (30 s). |
+| Pulsos | Una muestra filtrada que se aleja de la mediana más de k·σ (k = 4, 6 o 10), con σ = 1,4826·MAD de los últimos 2 s: el umbral se adapta al ruido de cada electrodo y un pulso grande no lo sube. Periodo refractario de 0,3 s. |
+| Espectro | Estimador de Welch sobre los últimos 4 s de señal filtrada: segmentos de 256 muestras (≈ 2 s, resolución 0,49 Hz a 125 Hz), sin media, ventana de Hann y 50 % de solape. Se dibuja en mariposa (A/B y C/D) hasta 60 Hz, coloreado por banda, con la frecuencia dominante (máximo entre 1 y 45 Hz con interpolación parabólica). |
+| Medidas por canal | RMS y pico a pico de los últimos 2 s, frecuencia y banda dominantes, potencia relativa por banda (delta 0,5–4, theta 4–8, alfa 8–13, beta 13–30 y gamma ≥ 30 Hz; las cuatro últimas son las del modelo), amplitud de la red eléctrica en la señal **sin** filtrar (indica mal contacto), pulsos y porcentaje de saturación. |
+
+El procesado está en `FRONT/Models/Dsp/` (`Biquad`, `Fft`, `WelchSpectrum`, `SignalConditioner`, `PulseDetector`, `SampleHistory`), sin dependencias de WPF; los gráficos son controles propios en `FRONT/Controls/` (`OscilloscopeDisplay`, `SpectrumButterfly`, `BandPowerBar`).
 
 **Inicio** se calcula con lo que hay en disco cada vez que se abre: canales, frecuencia de muestreo (editable; se usa al crear datasets y al predecir, y un modelo debe usarse con la frecuencia con que se entrenó), características por ventana, si existe el capturador o si se está grabando o prediciendo, el modelo más reciente y el estado de cada paso. Un paso está «Hecho» si ya hay grabaciones o modelos, «Siguiente paso» si es el que toca y «En curso» mientras se ejecuta.
 

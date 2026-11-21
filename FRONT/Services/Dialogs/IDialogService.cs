@@ -5,6 +5,8 @@ public interface IDialogService
 {
     string? PickExecutable(string? initialPath);
     string? PickModel(string? initialPath);
+    /// <summary>Elige una captura <c>.txt</c> para reproducirla en el osciloscopio.</summary>
+    string? PickRecording(string? initialPath);
     string? PickFolder(string? initialPath);
     void OpenFolder(string path);
     /// <summary>Pregunta sí o no; devuelve <c>true</c> si el usuario acepta.</summary>

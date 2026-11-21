@@ -35,6 +35,8 @@ public partial class App : Application
         });
         services.AddSingleton<ICaptureGateway, PythonCliCaptureGateway>();
         services.AddSingleton<IRealtimeGateway, PythonCliRealtimeGateway>();
+        services.AddSingleton<ISignalMonitorGateway, PythonCliMonitorGateway>();
+        services.AddSingleton<IRecordingPlayback, FileRecordingPlayback>();
         services.AddSingleton<ISessionLog, JsonlSessionLog>();
         services.AddSingleton<IDataCatalog, FileSystemDataCatalog>();
         services.AddSingleton<IModelStore, FileSystemModelStore>();
@@ -59,6 +61,7 @@ public partial class App : Application
         services.AddSingleton<TrainingViewModel>();
         services.AddSingleton<DatabaseViewModel>();
         services.AddSingleton<RealtimeViewModel>();
+        services.AddSingleton<OscilloscopeViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 
@@ -101,6 +104,7 @@ public partial class App : Application
         _serviceProvider.GetRequiredService<IHeadsetDetector>().StopMonitoring();
         // La predicción no tiene duración: sin esto, Python y el capturador seguirían abiertos con el casco ocupado.
         _serviceProvider.GetRequiredService<RealtimeViewModel>().Stop();
+        _serviceProvider.GetRequiredService<OscilloscopeViewModel>().Stop();
         base.OnExit(e);
     }
 }

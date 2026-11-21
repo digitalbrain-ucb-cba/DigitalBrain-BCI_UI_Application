@@ -378,6 +378,90 @@
         </Setter>
     </Style>
 
+    <!-- Control segmentado: una fila de opciones de texto, la elegida resaltada (osciloscopio) -->
+    <Style x:Key="SegmentItemStyle" TargetType="ListBoxItem">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Bd" Background="Transparent" CornerRadius="7" Padding="14,8" Margin="2">
+                        <TextBlock Text="{Binding}" FontSize="14.5" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                   Foreground="{TemplateBinding Foreground}" TextTrimming="CharacterEllipsis" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SegmentedStyle" TargetType="ListBox">
+        <Setter Property="SelectionMode" Value="Single" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource SegmentItemStyle}" />
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <UniformGrid Rows="1" />
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <Border Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource InputBorderBrush}"
+                            BorderThickness="1" CornerRadius="9" Padding="2">
+                        <ItemsPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Interruptor de canal (CH-A…): casilla con el color del canal en Tag -->
+    <Style x:Key="ChannelToggleStyle" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Border x:Name="Bd" Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource InputBorderBrush}"
+                            BorderThickness="1.5" CornerRadius="8" Padding="12,7">
+                        <StackPanel Orientation="Horizontal">
+                            <Border x:Name="Swatch" Width="11" Height="11" CornerRadius="3" Background="{TemplateBinding Tag}" VerticalAlignment="Center" />
+                            <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" TextElement.FontFamily="{StaticResource MonoFont}"
+                                              TextElement.FontWeight="Bold" TextElement.FontSize="13.5" />
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.5" />
+                            <Setter TargetName="Swatch" Property="Opacity" Value="0.35" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Opacity" Value="1" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Aviso bajo un campo; se oculta si no hay texto -->
     <Style x:Key="WarningTextStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="13.5" />

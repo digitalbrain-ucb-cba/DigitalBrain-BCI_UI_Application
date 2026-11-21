@@ -40,9 +40,11 @@ public partial class MainViewModel : BaseViewModel
     public bool IsTrainingActive => CurrentView is TrainingViewModel;
     public bool IsRealtimeActive => CurrentView is RealtimeViewModel;
     public bool IsDatabaseActive => CurrentView is DatabaseViewModel;
+    public bool IsScopeActive => CurrentView is OscilloscopeViewModel;
 
     partial void OnCurrentViewChanged(BaseViewModel? value)
     {
+        OnPropertyChanged(nameof(IsScopeActive));
         OnPropertyChanged(nameof(IsHomeActive));
         OnPropertyChanged(nameof(IsCaptureActive));
         OnPropertyChanged(nameof(IsTrainingActive));
@@ -66,6 +68,9 @@ public partial class MainViewModel : BaseViewModel
 
     [RelayCommand]
     private void NavigateDatabase() => _navigationService.NavigateTo<DatabaseViewModel>();
+
+    [RelayCommand]
+    private void NavigateScope() => _navigationService.NavigateTo<OscilloscopeViewModel>();
 
     [RelayCommand]
     private void UseLightTheme() => IsDarkTheme = false;

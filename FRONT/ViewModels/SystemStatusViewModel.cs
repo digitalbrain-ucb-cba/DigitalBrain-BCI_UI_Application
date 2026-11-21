@@ -24,6 +24,11 @@ public partial class SystemStatusViewModel : ObservableObject
     [ObservableProperty] private bool _isTraining;
     /// <summary>La pantalla «Tiempo real» está usando el casco; no se puede capturar a la vez.</summary>
     [ObservableProperty] private bool _isPredicting;
+    /// <summary>El osciloscopio está leyendo el casco en vivo; no se puede capturar ni predecir a la vez.</summary>
+    [ObservableProperty] private bool _isMonitoring;
+
+    /// <summary>Algún proceso tiene abierto el casco: solo uno puede usarlo a la vez.</summary>
+    public bool IsHeadsetBusy => IsCapturing || IsPredicting || IsMonitoring;
 
     public void RefreshModel(string? modelPath)
     {
@@ -35,7 +40,7 @@ public partial class SystemStatusViewModel : ObservableObject
     {
         ConnectedPortName = portName ?? "";
 
-        if (IsHeadsetStreaming || IsCapturing || IsPredicting)
+        if (IsHeadsetStreaming || IsHeadsetBusy)
         {
             IsHeadsetConnected = true;
             HeadsetDetail = "Transmitiendo";
@@ -56,6 +61,9 @@ public partial class SystemStatusViewModel : ObservableObject
         UpdateHeadsetStatus(!string.IsNullOrWhiteSpace(ConnectedPortName), ConnectedPortName);
 
     partial void OnIsPredictingChanged(bool value) =>
+        UpdateHeadsetStatus(!string.IsNullOrWhiteSpace(ConnectedPortName), ConnectedPortName);
+
+    partial void OnIsMonitoringChanged(bool value) =>
         UpdateHeadsetStatus(!string.IsNullOrWhiteSpace(ConnectedPortName), ConnectedPortName);
 
     partial void OnIsHeadsetStreamingChanged(bool value) =>

@@ -211,7 +211,8 @@ public partial class RealtimeViewModel : BaseViewModel
 
     private void OnStatusChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(SystemStatusViewModel.IsCapturing) or nameof(SystemStatusViewModel.IsTraining))
+        if (e.PropertyName is nameof(SystemStatusViewModel.IsCapturing) or nameof(SystemStatusViewModel.IsTraining)
+            or nameof(SystemStatusViewModel.IsMonitoring))
             TogglePredictionCommand.NotifyCanExecuteChanged();
     }
 
@@ -298,7 +299,7 @@ public partial class RealtimeViewModel : BaseViewModel
         }
     }
 
-    private bool CanTogglePrediction() => !Status.IsCapturing && !Status.IsTraining;
+    private bool CanTogglePrediction() => IsPredicting || (!Status.IsCapturing && !Status.IsTraining && !Status.IsMonitoring);
 
     /// <summary>Detiene la predicción en curso, si hay una; también se llama al cerrar la aplicación.</summary>
     public void Stop() => _predictionCts?.Cancel();
